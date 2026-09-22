@@ -84,7 +84,8 @@ final class EditorWindow: NSWindow {
 
       // Blend the color of contents behind the window
       (view as? NSVisualEffectView)?.blendingMode = .behindWindow
-    } else {
+    } else if !showsWorkspaceSidebar {
+      // A visible sidebar legitimately has no titlebar background view, see `showsWorkspaceSidebar`
       Logger.assertFail("Missing cachedTitlebarBackgroundView")
     }
 

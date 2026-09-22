@@ -19,11 +19,7 @@ extension NSApplication {
   }
 
   var currentEditor: EditorViewController? {
-    if let editor = keyWindow?.contentViewController as? EditorViewController {
-      return editor
-    }
-
-    return mainWindow?.contentViewController as? EditorViewController
+    keyWindow?.hostedEditor ?? mainWindow?.hostedEditor
   }
 
   func terminateSafely(_ sender: Any? = nil) {
@@ -36,6 +32,40 @@ extension NSApplication {
     RunLoop.performOnMain {
       Terminator.shared.relaunchApp(sender, safeMode: safeMode)
     }
+  }
+}
+
+// MARK: - Editor Lookup
+
+/**
+ Fork addition: windows wrap the editor in a container (an `NSSplitViewController`,
+ once the sidebar lands), so a window's `contentViewController` is no longer the
+ editor itself. Everything that used to cast reaches the editor through here instead.
+
+ Kept in this file rather than a new one because new app-target files mean
+ `project.pbxproj` edits, and that file is the worst merge surface in the repository.
+ */
+extension NSViewController {
+  /// The editor hosted by this controller, whether it is the controller itself or a descendant.
+  var hostedEditor: EditorViewController? {
+    if let editor = self as? EditorViewController {
+      return editor
+    }
+
+    for child in children {
+      if let editor = child.hostedEditor {
+        return editor
+      }
+    }
+
+    return nil
+  }
+}
+
+extension NSWindow {
+  /// The editor hosted by this window, at any depth below its content view controller.
+  var hostedEditor: EditorViewController? {
+    contentViewController?.hostedEditor
   }
 }
 

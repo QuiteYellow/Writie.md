@@ -141,7 +141,7 @@ final class EditorWindowController: NSWindowController, NSWindowDelegate {
 
 private extension EditorWindowController {
   var editorViewController: EditorViewController? {
-    contentViewController as? EditorViewController
+    contentViewController?.hostedEditor
   }
 
   var shouldWaitResetting: Bool {

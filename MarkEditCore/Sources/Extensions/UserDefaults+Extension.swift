@@ -36,7 +36,7 @@ public extension UserDefaults {
 
 private extension UserDefaults {
   static var appGroup: UserDefaults? {
-    UserDefaults(suiteName: "group.app.cyan.markedit")
+    UserDefaults(suiteName: "group.com.quiteyellow.writie-md")
   }
 
   static let forcedColorSchemeKey = "forcedColorScheme"

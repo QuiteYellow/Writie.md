@@ -9,7 +9,7 @@ import Foundation
 import OSLog
 import UpdaterCore
 
-let updaterLog = Logger(subsystem: "app.cyan.markedit", category: "updater")
+let updaterLog = Logger(subsystem: "com.quiteyellow.writie-md", category: "updater")
 
 /**
  XPC service that stages updates and starts the detached installer.
@@ -246,7 +246,7 @@ private extension Error {
   /// Converts service errors for XPC transport.
   var transportable: any Error {
     NSError(
-      domain: "app.cyan.markedit.updater",
+      domain: "com.quiteyellow.writie-md.updater",
       code: 0,
       userInfo: [NSLocalizedDescriptionKey: localizedDescription]
     )

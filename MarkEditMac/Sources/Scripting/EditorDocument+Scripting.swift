@@ -131,7 +131,7 @@ private extension EditorDocument {
       return nil
     }
 
-    guard let targetEditor = windowControllers.first?.contentViewController as? EditorViewController else {
+    guard let targetEditor = windowControllers.first?.contentViewController?.hostedEditor else {
       let documentName = displayName ?? defaultDraftName()
       ScriptingError.editorNotFound(documentName).applyToCommand(currentCommand)
       return nil

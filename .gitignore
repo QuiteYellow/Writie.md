@@ -5,3 +5,9 @@
 xcuserdata/
 Local.xcconfig
 *.local.entitlements
+
+## Local-only (fork)
+.env
+.claude/
+CoreEditor/deno.lock
+local-tools/

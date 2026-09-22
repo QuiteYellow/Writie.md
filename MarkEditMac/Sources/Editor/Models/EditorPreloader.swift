@@ -48,7 +48,7 @@ final class EditorPreloader {
     }
 
     let controllers = windows.compactMap {
-      $0.contentViewController as? EditorViewController
+      $0.hostedEditor
     }
 
     return controllers.filter { $0 !== preloadedController } + [preloadedController].compactMap { $0 }

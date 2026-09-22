@@ -1,0 +1,33 @@
+Writie.md
+Copyright (c) 2026 Jack Nagy
+
+Derived from MarkEdit
+Copyright (c) 2023 MarkEdit.app
+https://github.com/MarkEdit-app/MarkEdit
+
+Both the original work and this derivative are licensed under the MIT
+License. See the LICENSE file for the full terms, which are unchanged
+from upstream.
+
+------------------------------------------------------------------------
+Relationship to MarkEdit
+------------------------------------------------------------------------
+
+This is an independent, unofficial fork. It is NOT affiliated with,
+authorised, endorsed, or sponsored by MarkEdit.app or any of the
+MarkEdit project's contributors.
+
+The fork exists to carry a folder sidebar and in-window document
+switching -- workspace-style features that MarkEdit's maintainer has
+considered and declined as out of scope for that project, with reasons
+given publicly in issues #1389, #1417 and #736. That decision is theirs
+to make and is not disputed here. Any defect in this fork is a defect in
+this fork, and should be reported here rather than upstream.
+
+"MarkEdit" is used in this project only nominatively -- to identify the
+software this work is derived from -- and no claim is made to any right
+in the name. Builds of this fork ship under their own name, bundle
+identifier and icon, and must not be distributed in a form that presents
+itself as MarkEdit.
+
+The software is provided without warranty of any kind.

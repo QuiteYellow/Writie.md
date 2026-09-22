@@ -1,0 +1,15 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "%@ can’t be read" : {
+      "comment" : "Sidebar state when the chosen folder can't be listed. %@ is the folder name."
+    },
+    "No folder is open" : {
+      "comment" : "Sidebar state before a folder has been chosen."
+    },
+    "This folder is empty" : {
+      "comment" : "Sidebar state when the chosen folder has nothing to show."
+    }
+  },
+  "version" : "1.0"
+}

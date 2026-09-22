@@ -53,6 +53,11 @@ let package = Package(
       name: "TextCompletion",
       targets: ["TextCompletion"]
     ),
+    // Fork addition (Writie.md), appended so upstream's own additions merge above it
+    .library(
+      name: "Workspace",
+      targets: ["Workspace"]
+    ),
   ],
   dependencies: [
     .package(path: "../MarkEditCore"),
@@ -181,6 +186,20 @@ let package = Package(
         .plugin(name: "SwiftLint", package: "MarkEditTools"),
       ]
     ),
+    // Fork addition (Writie.md): the folder sidebar, appended for the same reason
+    .target(
+      name: "Workspace",
+      path: "Sources/Workspace",
+      resources: [
+        .process("Resources"),
+      ],
+      swiftSettings: [
+        .enableExperimentalFeature("StrictConcurrency")
+      ],
+      plugins: [
+        .plugin(name: "SwiftLint", package: "MarkEditTools"),
+      ]
+    ),
 
     .testTarget(
       name: "ModulesTests",
@@ -192,6 +211,7 @@ let package = Package(
         "Statistics",
         "TextBundle",
         "MarkEditKit",
+        "Workspace",
       ],
       path: "Tests",
       resources: [

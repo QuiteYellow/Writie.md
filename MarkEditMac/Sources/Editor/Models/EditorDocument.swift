@@ -80,7 +80,7 @@ final class EditorDocument: NSDocument {
   private var textBundle: TextBundleWrapper?
   private var revertedDate: Date = .distantPast
   private var suggestedTextEncoding: EditorTextEncoding?
-  private weak var hostViewController: EditorViewController?
+  weak var hostViewController: EditorViewController? // Fork: internal, see EditorDocument.adopt(windowController:contentViewController:)
 
   /**
    File name from the table of contents.
@@ -102,7 +102,7 @@ final class EditorDocument: NSDocument {
 
     // Note hostViewController is a weak reference, it must be strongly retained first
     let contentVC = EditorPreloader.shared.takeViewController()
-    windowController.contentViewController = contentVC
+    windowController.contentViewController = WorkspaceSplitViewController(editor: contentVC)
 
     // Restore the autosaved window frame, which relies on windowFrameAutosaveName
     if let autosavedFrame = windowController.autosavedFrame {
