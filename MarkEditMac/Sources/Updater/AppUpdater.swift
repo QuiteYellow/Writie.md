@@ -9,6 +9,7 @@ import AppKit
 import AppKitExtensions
 import MarkEditKit
 
+@MainActor
 enum AppUpdater {
   private enum Constants {
     static let defaultOSVer = "1.0.0"
@@ -156,7 +157,7 @@ private extension AppUpdater {
   }
 
   static func menuItemImage(_ symbolName: String) -> NSImage? {
-    AppDesign.menuIconEvolution ? NSImage(systemSymbolName: symbolName) : nil
+    NSImage(systemSymbolName: symbolName)
   }
 
   static func makeUpdateAlert(newVersion: AppVersion, showingDetails: Bool = false) -> NSAlert {

@@ -13,24 +13,12 @@ public extension NSColor {
     .theme(light: NSColor(white: 0, alpha: 0.3), dark: NSColor(white: 1, alpha: 0.3))
   }
 
-  static var plainButtonHighlighted: NSColor {
-    .theme(light: NSColor(white: 0, alpha: 0.1), dark: NSColor(white: 1, alpha: 0.1))
-  }
-
   static var pushButtonBackground: NSColor {
     .theme(light: .white, dark: NSColor(hexCode: 0x565a61))
   }
 
   static var modernButtonBackground: NSColor {
     .theme(light: NSColor(white: 0, alpha: 0.08), dark: NSColor(white: 1, alpha: 0.066))
-  }
-
-  static var finderContentBackground: NSColor {
-    if #available(macOS 26.0, *) {
-      return .windowBackgroundColor
-    }
-
-    return .theme(light: .white, dark: .windowBackgroundColor)
   }
 }
 
@@ -84,7 +72,7 @@ public extension NSColor {
   func resolvedColor(with appearance: NSAppearance = NSApp.effectiveAppearance) -> NSColor {
     var cgColor: CGColor?
     appearance.performAsCurrentDrawingAppearance {
-      // [macOS 26] Revisit this later (#1281)
+      // AppKit invokes this synchronously in our main-actor call, but its block is not annotated.
       MainActor.assumeIsolated {
         cgColor = self.cgColor
       }

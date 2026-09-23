@@ -12,6 +12,13 @@ import MarkEditKit
 @main
 final class Application: NSApplication {
   static func main() {
+    if ApplicationEnvironment.isRunningTests {
+      // XCTest needs NSApplicationMain, but not the app's startup services.
+      AppCustomization.createFiles()
+      _ = NSApplicationMain(CommandLine.argc, CommandLine.unsafeArgv)
+      return
+    }
+
     NSObject.swizzleAccessibilityBundlesOnce
     NSMenu.swizzleIsUpdatedExcludingContentTypesOnce
     NSSpellChecker.swizzleInlineCompletionEnabledOnce
@@ -46,7 +53,7 @@ final class Application: NSApplication {
     }
 
     // Ensure lines are fully selected for a better Writing Tools experience
-    if #available(macOS 15.1, *), action == sel_getUid("showWritingTools:") {
+    if action == sel_getUid("showWritingTools:") {
       Logger.assert(sender is NSMenuItem, "Invalid sender was found")
       Logger.assert(target == nil || (target as? AnyObject)?.className == "WKMenuTarget", "Invalid target was found")
 
@@ -68,6 +75,37 @@ final class Application: NSApplication {
 
     return handled
   }
+}
+
+enum ApplicationEnvironment {
+  static let isRunningTests = NSClassFromString("XCTestCase") != nil
+
+  static let testIdentifier = "app.markedit.tests.\(UUID().uuidString)"
+
+  static var preferences: UserDefaults {
+    guard isRunningTests else {
+      return .standard
+    }
+
+    guard let preferences = UserDefaults(suiteName: testIdentifier) else {
+      preconditionFailure("Unable to create isolated test preferences")
+    }
+    return preferences
+  }
+
+  static let documentsDirectory: URL = {
+    guard isRunningTests else {
+      return .documentsDirectory
+    }
+
+    let directory = FileManager.default.temporaryDirectory.appending(path: testIdentifier, directoryHint: .isDirectory)
+    do {
+      try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    } catch {
+      preconditionFailure("Unable to create isolated test directory: \(error)")
+    }
+    return directory
+  }()
 }
 
 // MARK: - Private

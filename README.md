@@ -16,7 +16,7 @@ The fork is unofficial and unaffiliated. Report anything broken here, not to Mar
 
 ## Building
 
-Runs on macOS 15 and later.
+Runs on macOS 26 and later, and builds with Xcode 27 — upstream's requirement since the 1.36.0 merge.
 
 The editor's web bundle is generated and is not in the repository. Xcode cannot build without it, and the error it gives when the bundle is missing says only that `index.html` couldn't be opened.
 
