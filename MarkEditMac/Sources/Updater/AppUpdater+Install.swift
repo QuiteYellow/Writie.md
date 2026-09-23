@@ -123,7 +123,8 @@ extension AppUpdater {
     alert.addButton(withTitle: Localized.Updater.notNow)
 
     if alert.runModal() == .alertFirstButtonReturn {
-      NSWorkspace.shared.safelyOpenURL(string: releaseURL ?? "https://github.com/MarkEdit-app/MarkEdit/releases")
+      // Fork: the updater's own error dialog, so it must match the updater's feed
+      NSWorkspace.shared.safelyOpenURL(string: releaseURL ?? "https://github.com/QuiteYellow/Writie.md/releases")
     }
   }
 }

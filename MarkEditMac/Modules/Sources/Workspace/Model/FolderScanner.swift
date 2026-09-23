@@ -7,20 +7,21 @@
 import Foundation
 
 /**
- Turns a folder on disk into a tree of `FileNode`.
+ Lists one directory.
 
- `scan` is `nonisolated` and `async`, so enumerating a folder never runs on the main actor.
- It walks the whole tree in one pass, which is what "static tree" buys: no expansion
- bookkeeping, and the answer is a value the model can swap in wholesale. M6 makes it lazy,
- one directory per expanded node, because that is also the unit `DispatchSource` watches.
+ `contents(of:options:)` is `nonisolated` and `async`, so enumerating a folder never runs on
+ the main actor. It reads a single directory and does not descend: the sidebar asks for a
+ directory when its row is expanded, which is also the unit `DirectoryObserver` watches, so
+ the two line up exactly — one `open`, one listing, one observer, torn down together when the
+ row collapses.
 
- Until then `Constants.nodeLimit` is the stop that keeps someone who points the sidebar at
- their home directory from waiting on a full-disk walk. It is a safety limit, not a design:
- a tree that hits it is silently truncated, which is acceptable only because the root is
- hardcoded at this milestone.
+ M4's eager whole-tree walk needed a 4000-node stop to keep someone who pointed the sidebar at
+ their home directory from waiting on a full-disk walk, and a tree that hit it was silently
+ truncated. Reading one directory at a time removes the need for the limit rather than raising
+ it, so that truncation is gone.
  */
 public enum FolderScanner {
-  public enum Failure: Error {
+  public enum Failure: Error, Equatable {
     case unreadable(URL)
   }
 
@@ -35,20 +36,7 @@ public enum FolderScanner {
     }
   }
 
-  public static func scan(root: URL, options: Options) async throws(Failure) -> [FileNode] {
-    var budget = Constants.nodeLimit
-    return try contents(of: root, options: options, budget: &budget)
-  }
-}
-
-// MARK: - Private
-
-private extension FolderScanner {
-  enum Constants {
-    static let nodeLimit = 4000
-  }
-
-  static func contents(of directory: URL, options: Options, budget: inout Int) throws(Failure) -> [FileNode] {
+  public static func contents(of directory: URL, options: Options) async throws(Failure) -> [FileNode] {
     let keys: [URLResourceKey] = [.isDirectoryKey, .isPackageKey]
     let mask: FileManager.DirectoryEnumerationOptions = options.showsHiddenFiles ? [] : [.skipsHiddenFiles]
 
@@ -64,7 +52,7 @@ private extension FolderScanner {
     }
 
     var nodes = [FileNode]()
-    for url in urls where budget > 0 {
+    for url in urls {
       let values = try? url.resourceValues(forKeys: Set(keys))
 
       // A package (.textbundle, .app) is a directory the user means as one thing
@@ -73,17 +61,16 @@ private extension FolderScanner {
         continue
       }
 
-      budget -= 1
-
-      // A subfolder we can't read lists as empty rather than failing the whole scan; only
-      // the root being unreadable is worth telling the user about
-      let children = isDirectory ? ((try? contents(of: url, options: options, budget: &budget)) ?? []) : nil
-      nodes.append(FileNode(url: url, children: children))
+      nodes.append(FileNode(url: url, isDirectory: isDirectory))
     }
 
     return sorted(nodes)
   }
+}
 
+// MARK: - Private
+
+private extension FolderScanner {
   static func isListed(_ url: URL, options: Options) -> Bool {
     let ext = url.pathExtension
     // Notes folders are full of extension-less files, and the app opens them as plain text

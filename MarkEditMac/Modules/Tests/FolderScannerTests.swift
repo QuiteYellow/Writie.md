@@ -4,26 +4,33 @@
 //  Fork addition (Writie.md), not present upstream.
 //
 
-import XCTest
+import Foundation
+import Testing
 @testable import Workspace
 
-final class FolderScannerTests: XCTestCase {
-  func testOrdersFoldersFirstThenNaturally() async throws {
-    let root = try makeTree([
-      "9.md",
-      "10.md",
-      "Notes/inner.md",
-      "archive/old.md",
-    ])
+/// Swift Testing, like the rest of the fork's own tests. Upstream's XCTest suites are
+/// untouched and the two run side by side in `ModulesTests`.
+@MainActor
+struct FolderScannerTests {
+  @Test
+  func ordersFoldersFirstThenNaturally() async throws {
+    let scratch = try Scratch()
+    defer { scratch.tearDown() }
 
-    let nodes = try await FolderScanner.scan(root: root, options: .markdown)
+    let root = try scratch.folder(["9.md", "10.md", "Notes/inner.md", "archive/old.md"])
+    let nodes = try await FolderScanner.contents(of: root, options: .markdown)
+
     // Case-insensitive like Finder, so "archive" sorts before "Notes", and 9 before 10
-    XCTAssertEqual(nodes.map(\.name), ["archive", "Notes", "9.md", "10.md"])
-    XCTAssertEqual(nodes.map(\.isDirectory), [true, true, false, false])
+    #expect(nodes.map(\.name) == ["archive", "Notes", "9.md", "10.md"])
+    #expect(nodes.map(\.isDirectory) == [true, true, false, false])
   }
 
-  func testKeepsKnownExtensionsAndExtensionLessFiles() async throws {
-    let root = try makeTree([
+  @Test
+  func keepsKnownExtensionsAndExtensionLessFiles() async throws {
+    let scratch = try Scratch()
+    defer { scratch.tearDown() }
+
+    let root = try scratch.folder([
       "keep.md",
       "keep.markdown",
       "keep.txt",
@@ -33,45 +40,71 @@ final class FolderScannerTests: XCTestCase {
       "drop.pdf",
     ])
 
-    let nodes = try await FolderScanner.scan(root: root, options: .markdown)
-    XCTAssertEqual(Set(nodes.map(\.name)), ["keep.md", "keep.markdown", "keep.txt", "Upper.MD", "README"])
+    let nodes = try await FolderScanner.contents(of: root, options: .markdown)
+    #expect(Set(nodes.map(\.name)) == ["keep.md", "keep.markdown", "keep.txt", "Upper.MD", "README"])
   }
 
-  func testDescendsIntoSubfolders() async throws {
-    let root = try makeTree(["top/middle/bottom.md"])
-    let nodes = try await FolderScanner.scan(root: root, options: .markdown)
+  /**
+   One directory, and no further.
 
-    let middle = try XCTUnwrap(nodes.first?.children?.first)
-    XCTAssertEqual(middle.name, "middle")
-    XCTAssertEqual(middle.children?.map(\.name), ["bottom.md"])
+   This is the change M6 makes: the scanner used to walk the whole tree in one pass, which is
+   what forced a 4000-node stop and the silent truncation that came with it. A subfolder is
+   now a node with `isDirectory` set and nothing else, and the sidebar asks for its contents
+   when the row is expanded.
+   */
+  @Test
+  func listsOneDirectoryAndDoesNotDescend() async throws {
+    let scratch = try Scratch()
+    defer { scratch.tearDown() }
+
+    let root = try scratch.folder(["top/middle/bottom.md"])
+    let top = try #require(try await FolderScanner.contents(of: root, options: .markdown).first)
+    #expect(top.name == "top")
+    #expect(top.isDirectory)
+
+    let middle = try #require(try await FolderScanner.contents(of: top.url, options: .markdown).first)
+    #expect(middle.name == "middle")
+
+    let bottom = try await FolderScanner.contents(of: middle.url, options: .markdown)
+    #expect(bottom.map(\.name) == ["bottom.md"])
   }
 
-  func testHidesDotFilesUnlessAsked() async throws {
-    let root = try makeTree([".hidden.md", "shown.md"])
+  @Test
+  func hidesDotFilesUnlessAsked() async throws {
+    let scratch = try Scratch()
+    defer { scratch.tearDown() }
 
-    let hiding = try await FolderScanner.scan(root: root, options: .markdown)
-    XCTAssertEqual(hiding.map(\.name), ["shown.md"])
+    let root = try scratch.folder([".hidden.md", "shown.md"])
 
-    let showing = try await FolderScanner.scan(root: root, options: .markdownShowingHidden)
-    XCTAssertEqual(showing.map(\.name), [".hidden.md", "shown.md"])
+    let hiding = try await FolderScanner.contents(of: root, options: .markdown)
+    #expect(hiding.map(\.name) == ["shown.md"])
+
+    let showing = try await FolderScanner.contents(of: root, options: .markdownShowingHidden)
+    #expect(showing.map(\.name) == [".hidden.md", "shown.md"])
   }
 
-  func testTreatsAPackageAsAFileAndDoesNotDescend() async throws {
-    let root = try makeTree(["bundle.textbundle/text.md"])
-    let nodes = try await FolderScanner.scan(root: root, options: .textBundle)
+  @Test
+  func treatsAPackageAsAFile() async throws {
+    let scratch = try Scratch()
+    defer { scratch.tearDown() }
 
-    XCTAssertEqual(nodes.map(\.name), ["bundle.textbundle"])
-    XCTAssertFalse(try XCTUnwrap(nodes.first).isDirectory)
+    let root = try scratch.folder(["bundle.textbundle/text.md"])
+    let nodes = try await FolderScanner.contents(of: root, options: .textBundle)
+
+    #expect(nodes.map(\.name) == ["bundle.textbundle"])
+    #expect(try #require(nodes.first).isDirectory == false)
   }
 
-  func testUnreadableRootThrows() async {
-    let missing = URL(filePath: NSTemporaryDirectory()).appending(path: "does-not-exist-\(UUID().uuidString)")
+  @Test
+  func anUnreadableDirectoryThrows() async throws {
+    let scratch = try Scratch()
+    defer { scratch.tearDown() }
 
-    do {
-      _ = try await FolderScanner.scan(root: missing, options: .markdown)
-      XCTFail("Expected scanning a missing folder to throw")
-    } catch {
-      XCTAssertEqual(error, .unreadable(missing))
+    let missing = try scratch.folder()
+    try FileManager.default.removeItem(at: missing)
+
+    await #expect(throws: FolderScanner.Failure.unreadable(missing)) {
+      try await FolderScanner.contents(of: missing, options: .markdown)
     }
   }
 }
@@ -82,32 +115,4 @@ private extension FolderScanner.Options {
   static let markdown = Self(fileExtensions: ["md", "markdown", "txt"], showsHiddenFiles: false)
   static let markdownShowingHidden = Self(fileExtensions: ["md", "markdown", "txt"], showsHiddenFiles: true)
   static let textBundle = Self(fileExtensions: ["textbundle"], showsHiddenFiles: false)
-}
-
-private extension FolderScannerTests {
-  /// Builds a throwaway tree from a list of relative paths; a path with a slash makes folders.
-  func makeTree(_ paths: [String]) throws -> URL {
-    let root = URL(filePath: NSTemporaryDirectory())
-      .appending(path: "FolderScannerTests-\(UUID().uuidString)")
-
-    try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-    addTeardownBlock { try? FileManager.default.removeItem(at: root) }
-
-    for path in paths {
-      let url = root.appending(path: path)
-      try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-      try Data().write(to: url)
-    }
-
-    return root
-  }
-}
-
-extension FolderScanner.Failure: Equatable {
-  public static func == (lhs: Self, rhs: Self) -> Bool {
-    switch (lhs, rhs) {
-    case let (.unreadable(lhs), .unreadable(rhs)):
-      return lhs == rhs
-    }
-  }
 }

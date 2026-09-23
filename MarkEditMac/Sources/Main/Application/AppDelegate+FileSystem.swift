@@ -46,6 +46,8 @@ extension AppDelegate {
   }
 
   func startAccessingGrantedFolder() {
+    startAccessingWorkspaceRoot()
+
     guard let bookmarkData = AppPreferences.General.grantedFolderBookmark else {
       return
     }

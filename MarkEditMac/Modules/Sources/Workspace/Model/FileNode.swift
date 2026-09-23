@@ -12,18 +12,20 @@ import Foundation
  A value type keyed by its `URL`, so a scan performed off the main actor crosses back to the
  model without ceremony — in Swift 6 language mode the compiler checks that, rather than
  leaving it to review.
+
+ A node no longer carries its children. The tree is read one directory at a time, as rows are
+ expanded, and `WorkspaceModel` holds the listings; a node only has to say whether it is a
+ directory, which is what decides whether it gets a disclosure triangle or a selection tag.
  */
 public struct FileNode: Identifiable, Hashable, Sendable {
-  /// Nil for files. A directory always has an array, empty if it holds nothing we show.
-  public let children: [Self]?
   public let url: URL
+  public let isDirectory: Bool
 
   public var id: URL { url }
   public var name: String { url.lastPathComponent }
-  public var isDirectory: Bool { children != nil }
 
-  public init(url: URL, children: [Self]?) {
+  public init(url: URL, isDirectory: Bool) {
     self.url = url
-    self.children = children
+    self.isDirectory = isDirectory
   }
 }

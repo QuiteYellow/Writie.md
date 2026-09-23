@@ -7,6 +7,7 @@
 
 import AppKit
 import MarkEditKit
+import Workspace
 
 extension EditorViewController {
   var tableOfContentsMenuButton: NSPopUpButton? {
@@ -88,6 +89,11 @@ extension EditorViewController {
 
 extension EditorViewController: NSToolbarDelegate {
   func toolbar(_ toolbar: NSToolbar, itemForItemIdentifier itemIdentifier: NSToolbarItem.Identifier, willBeInsertedIntoToolbar flag: Bool) -> NSToolbarItem? {
+    // Fork: the sidebar's items are AppKit's own and arrive complete, see WorkspaceToolbarItems
+    if let item = WorkspaceToolbarItems.item(for: itemIdentifier, in: view.window) {
+      return item
+    }
+
     let item: NSToolbarItem? = {
       switch itemIdentifier {
       case .tableOfContents: return tableOfContentsItem
@@ -129,11 +135,11 @@ extension EditorViewController: NSToolbarDelegate {
   }
 
   func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-    NSToolbarItem.Identifier.defaultItems
+    WorkspaceToolbarItems.identifiers + NSToolbarItem.Identifier.defaultItems
   }
 
   func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-    NSToolbarItem.Identifier.allItems + AppRuntimeConfig.customToolbarItems.map {
+    WorkspaceToolbarItems.identifiers + NSToolbarItem.Identifier.allItems + AppRuntimeConfig.customToolbarItems.map {
       $0.identifier
     }
   }

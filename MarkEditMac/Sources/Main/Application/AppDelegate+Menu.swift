@@ -223,11 +223,13 @@ private extension AppDelegate {
   }
 
   @IBAction func openIssueTracker(_ sender: Any?) {
-    NSWorkspace.shared.safelyOpenURL(string: "https://github.com/MarkEdit-app/MarkEdit/issues")
+    // Fork: this app's bugs are not upstream's to receive
+    NSWorkspace.shared.safelyOpenURL(string: "https://github.com/QuiteYellow/Writie.md/issues")
   }
 
   @IBAction func openVersionHistory(_ sender: Any?) {
-    NSWorkspace.shared.safelyOpenURL(string: "https://github.com/MarkEdit-app/MarkEdit/releases")
+    // Fork: this app's releases, matching the updater's feed
+    NSWorkspace.shared.safelyOpenURL(string: "https://github.com/QuiteYellow/Writie.md/releases")
   }
 
   @IBAction func openUpdateBehavior(_ sender: Any?) {

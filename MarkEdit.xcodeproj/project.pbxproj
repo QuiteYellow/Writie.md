@@ -62,6 +62,7 @@
 		8767BBB5295AD62700BFACAE /* EditorReplaceButtons.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8767BBB4295AD62700BFACAE /* EditorReplaceButtons.swift */; };
 		8769BABE2C65F9D400EDA0A6 /* AppRuntimeConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8769BABD2C65F9D400EDA0A6 /* AppRuntimeConfig.swift */; };
 		876D70872E7A8E9D00E308A4 /* AppIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = 876D70862E7A8E9D00E308A4 /* AppIcon.icon */; };
+		FF04000000000000000000D0 /* Writie.md.icon in Resources */ = {isa = PBXBuildFile; fileRef = FF04000000000000000000D1 /* Writie.md.icon */; };
 		8772E385294AC60D00111E83 /* EditorPreloader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8772E384294AC60D00111E83 /* EditorPreloader.swift */; };
 		8775A77B29867012005867BF /* FontPicker in Frameworks */ = {isa = PBXBuildFile; productRef = 8775A77A29867012005867BF /* FontPicker */; };
 		877B965D2C63815000186414 /* AppHotKeys.swift in Sources */ = {isa = PBXBuildFile; fileRef = 877B965C2C63815000186414 /* AppHotKeys.swift */; };
@@ -132,6 +133,8 @@
 		EE100014EEEE000000000014 /* ExtensionsOverlays.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE100013EEEE000000000013 /* ExtensionsOverlays.swift */; };
 		EE100017EEEE000000000017 /* ExtensionsViewController+RowSizing.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE100016EEEE000000000016 /* ExtensionsViewController+RowSizing.swift */; };
 		EE200001EEEE000000000001 /* ExtensionCore in Frameworks */ = {isa = PBXBuildFile; productRef = EE200002EEEE000000000002 /* ExtensionCore */; };
+		FF03000000000000000000C2 /* WorkspaceSidebarUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF03000000000000000000C1 /* WorkspaceSidebarUITests.swift */; };
+		FF03000000000000000000CE /* WorkspaceLaunchUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF03000000000000000000CD /* WorkspaceLaunchUITests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -148,6 +151,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = 87DA0000000000000000E002;
 			remoteInfo = UpdateInstaller;
+		};
+		FF03000000000000000000CC /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 870A519A294700DE0095C7EB /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 870A51A1294700DE0095C7EB;
+			remoteInfo = MarkEditMac;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -236,6 +246,7 @@
 		8767BBB4295AD62700BFACAE /* EditorReplaceButtons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorReplaceButtons.swift; sourceTree = "<group>"; };
 		8769BABD2C65F9D400EDA0A6 /* AppRuntimeConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRuntimeConfig.swift; sourceTree = "<group>"; };
 		876D70862E7A8E9D00E308A4 /* AppIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = AppIcon.icon; sourceTree = "<group>"; };
+		FF04000000000000000000D1 /* Writie.md.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = "Writie.md.icon"; sourceTree = "<group>"; };
 		8772E384294AC60D00111E83 /* EditorPreloader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorPreloader.swift; sourceTree = "<group>"; };
 		877B965C2C63815000186414 /* AppHotKeys.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppHotKeys.swift; sourceTree = "<group>"; };
 		877D77C92DFA76E50086180B /* AppDesign.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDesign.swift; sourceTree = "<group>"; };
@@ -300,6 +311,9 @@
 		EE100011EEEE000000000011 /* ExtensionsRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtensionsRowView.swift; sourceTree = "<group>"; };
 		EE100013EEEE000000000013 /* ExtensionsOverlays.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtensionsOverlays.swift; sourceTree = "<group>"; };
 		EE100016EEEE000000000016 /* ExtensionsViewController+RowSizing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ExtensionsViewController+RowSizing.swift"; sourceTree = "<group>"; };
+		FF03000000000000000000C0 /* WorkspaceUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = WorkspaceUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		FF03000000000000000000C1 /* WorkspaceSidebarUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceSidebarUITests.swift; sourceTree = "<group>"; };
+		FF03000000000000000000CD /* WorkspaceLaunchUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceLaunchUITests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -339,6 +353,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		FF03000000000000000000C5 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -351,6 +372,7 @@
 				870A51A4294700DE0095C7EB /* MarkEditMac */,
 				872924042951525C007156B1 /* QuickLookMac */,
 				87DA0000000000000000E001 /* UpdateInstaller */,
+				FF03000000000000000000C3 /* WorkspaceUITests */,
 				870A51A3294700DE0095C7EB /* Products */,
 				874823CC29B0BD980067EC49 /* Frameworks */,
 				8743B26229593B2000F83DAE /* Build.xcconfig */,
@@ -367,6 +389,7 @@
 				870A51A2294700DE0095C7EB /* MarkEdit.app */,
 				872924002951525C007156B1 /* QuickLookExtension.appex */,
 				87DA0000000000000000E000 /* UpdateInstaller.xpc */,
+				FF03000000000000000000C0 /* WorkspaceUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -399,6 +422,7 @@
 				870A51C8294752530095C7EB /* index.html */,
 				870A51A9294700E00095C7EB /* Assets.xcassets */,
 				876D70862E7A8E9D00E308A4 /* AppIcon.icon */,
+				FF04000000000000000000D1 /* Writie.md.icon */,
 				8757F7FB2AAC815F001957DD /* Localizable.xcstrings */,
 				B0E02F672D8F77A50060DEA5 /* MarkEdit.sdef */,
 			);
@@ -705,6 +729,15 @@
 			path = UpdateInstaller;
 			sourceTree = "<group>";
 		};
+		FF03000000000000000000C3 /* WorkspaceUITests */ = {
+			isa = PBXGroup;
+			children = (
+				FF03000000000000000000C1 /* WorkspaceSidebarUITests.swift */,
+				FF03000000000000000000CD /* WorkspaceLaunchUITests.swift */,
+			);
+			path = WorkspaceUITests;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -788,6 +821,24 @@
 			productReference = 87DA0000000000000000E000 /* UpdateInstaller.xpc */;
 			productType = "com.apple.product-type.xpc-service";
 		};
+		FF03000000000000000000C7 /* WorkspaceUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FF03000000000000000000C8 /* Build configuration list for PBXNativeTarget "WorkspaceUITests" */;
+			buildPhases = (
+				FF03000000000000000000C4 /* Sources */,
+				FF03000000000000000000C5 /* Frameworks */,
+				FF03000000000000000000C6 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				FF03000000000000000000CB /* PBXTargetDependency */,
+			);
+			name = WorkspaceUITests;
+			productName = WorkspaceUITests;
+			productReference = FF03000000000000000000C0 /* WorkspaceUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -807,6 +858,9 @@
 					};
 					87DA0000000000000000E002 = {
 						CreatedOnToolsVersion = 26.4;
+					};
+					FF03000000000000000000C7 = {
+						TestTargetID = 870A51A1294700DE0095C7EB;
 					};
 				};
 			};
@@ -828,6 +882,7 @@
 				870A51A1294700DE0095C7EB /* MarkEditMac */,
 				872923FF2951525C007156B1 /* QuickLookMac */,
 				87DA0000000000000000E002 /* UpdateInstaller */,
+				FF03000000000000000000C7 /* WorkspaceUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -841,7 +896,7 @@
 				87132AA32C188FE900FD262B /* AppShortcuts.xcstrings in Resources */,
 				870A51AA294700E00095C7EB /* Assets.xcassets in Resources */,
 				8757F7FC2AAC815F001957DD /* Localizable.xcstrings in Resources */,
-				876D70872E7A8E9D00E308A4 /* AppIcon.icon in Resources */,
+				FF04000000000000000000D0 /* Writie.md.icon in Resources */,
 				870A51AD294700E00095C7EB /* Main.storyboard in Resources */,
 				B0E02F682D8F77A50060DEA5 /* MarkEdit.sdef in Resources */,
 			);
@@ -853,6 +908,13 @@
 			files = (
 				8729240B2951525C007156B1 /* Main.xib in Resources */,
 				87B0D1022F1A4C0100B0D101 /* Localizable.xcstrings in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		FF03000000000000000000C6 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1024,6 +1086,15 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		FF03000000000000000000C4 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FF03000000000000000000C2 /* WorkspaceSidebarUITests.swift in Sources */,
+				FF03000000000000000000CE /* WorkspaceLaunchUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -1048,6 +1119,11 @@
 			isa = PBXTargetDependency;
 			target = 87DA0000000000000000E002 /* UpdateInstaller */;
 			targetProxy = 87DA0000000000000000E00A /* PBXContainerItemProxy */;
+		};
+		FF03000000000000000000CB /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 870A51A1294700DE0095C7EB /* MarkEditMac */;
+			targetProxy = FF03000000000000000000CC /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -1215,7 +1291,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 8743B26229593B2000F83DAE /* Build.xcconfig */;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = "Writie.md";
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = "$(MARKEDITMAC_ENTITLEMENTS)";
@@ -1228,11 +1304,11 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = MarkEditMac/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = MarkEdit;
+				INFOPLIST_KEY_CFBundleDisplayName = "Writie.md";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSMainStoryboardFile = Main;
-				INFOPLIST_KEY_NSPrincipalClass = "$(PRODUCT_NAME).Application";
+				INFOPLIST_KEY_NSPrincipalClass = "$(PRODUCT_MODULE_NAME).Application";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -1240,7 +1316,8 @@
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = "$(inherited)";
 				PRODUCT_BUNDLE_IDENTIFIER = "$(inherited)";
-				PRODUCT_NAME = MarkEdit;
+				PRODUCT_MODULE_NAME = MarkEdit;
+				PRODUCT_NAME = "Writie.md";
 				REGISTER_APP_GROUPS = "$(inherited)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -1252,7 +1329,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 8743B26229593B2000F83DAE /* Build.xcconfig */;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = "Writie.md";
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = "$(MARKEDITMAC_ENTITLEMENTS)";
@@ -1265,11 +1342,11 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = MarkEditMac/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = MarkEdit;
+				INFOPLIST_KEY_CFBundleDisplayName = "Writie.md";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSMainStoryboardFile = Main;
-				INFOPLIST_KEY_NSPrincipalClass = "$(PRODUCT_NAME).Application";
+				INFOPLIST_KEY_NSPrincipalClass = "$(PRODUCT_MODULE_NAME).Application";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -1277,7 +1354,8 @@
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = "$(inherited)";
 				PRODUCT_BUNDLE_IDENTIFIER = "$(inherited)";
-				PRODUCT_NAME = MarkEdit;
+				PRODUCT_MODULE_NAME = MarkEdit;
+				PRODUCT_NAME = "Writie.md";
 				REGISTER_APP_GROUPS = "$(inherited)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -1297,7 +1375,7 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = QuickLookMac/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = MarkEdit;
+				INFOPLIST_KEY_CFBundleDisplayName = "Writie.md";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -1328,7 +1406,7 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = QuickLookMac/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = MarkEdit;
+				INFOPLIST_KEY_CFBundleDisplayName = "Writie.md";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -1358,7 +1436,7 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = UpdateInstaller/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = MarkEdit;
+				INFOPLIST_KEY_CFBundleDisplayName = "Writie.md";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = "$(inherited)";
@@ -1381,7 +1459,7 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = UpdateInstaller/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = MarkEdit;
+				INFOPLIST_KEY_CFBundleDisplayName = "Writie.md";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = "$(inherited)";
@@ -1389,6 +1467,42 @@
 				PRODUCT_NAME = UpdateInstaller;
 				SKIP_INSTALL = YES;
 				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		FF03000000000000000000C9 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 8743B26229593B2000F83DAE /* Build.xcconfig */;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "$(inherited)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = "$(inherited)";
+				DEVELOPMENT_TEAM = "$(inherited)";
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = "$(inherited)";
+				PRODUCT_BUNDLE_IDENTIFIER = "$(inherited).workspace-uitests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = MarkEditMac;
+			};
+			name = Debug;
+		};
+		FF03000000000000000000CA /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 8743B26229593B2000F83DAE /* Build.xcconfig */;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "$(inherited)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = "$(inherited)";
+				DEVELOPMENT_TEAM = "$(inherited)";
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = "$(inherited)";
+				PRODUCT_BUNDLE_IDENTIFIER = "$(inherited).workspace-uitests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TEST_TARGET_NAME = MarkEditMac;
 			};
 			name = Release;
 		};
@@ -1427,6 +1541,15 @@
 			buildConfigurations = (
 				87DA0000000000000000E004 /* Debug */,
 				87DA0000000000000000E005 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		FF03000000000000000000C8 /* Build configuration list for PBXNativeTarget "WorkspaceUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FF03000000000000000000C9 /* Debug */,
+				FF03000000000000000000CA /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

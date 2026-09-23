@@ -12,7 +12,12 @@ import MarkEditKit
 enum AppUpdater {
   private enum Constants {
     static let defaultOSVer = "1.0.0"
-    static let endpoint = "https://api.github.com/repos/MarkEdit-app/MarkEdit/releases/latest"
+    // Fork: the fork's own releases, not upstream's — the one line this machinery needs to
+    // be safe here. The installer replaces `Bundle.main.bundleURL` in place, so upstream's
+    // feed meant "Update to 1.36.0" would have downloaded MarkEdit and overwritten
+    // Writie.md.app, sidebar and all. Everything else about the updater is upstream's and
+    // stays that way; the fork simply has no releases yet, so nothing is offered until it does.
+    static let endpoint = "https://api.github.com/repos/QuiteYellow/Writie.md/releases/latest"
     static let minimumDownloadDuration: TimeInterval = 2.5
     static let decoder = {
       let decoder = JSONDecoder()

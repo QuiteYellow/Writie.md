@@ -186,9 +186,11 @@ let package = Package(
         .plugin(name: "SwiftLint", package: "MarkEditTools"),
       ]
     ),
-    // Fork addition (Writie.md): the folder sidebar, appended for the same reason
+    // Fork addition (Writie.md): the folder sidebar, appended for the same reason.
+    // `SettingsUI` is for the form modifiers the launch-folder rows share with upstream's own.
     .target(
       name: "Workspace",
+      dependencies: ["SettingsUI"],
       path: "Sources/Workspace",
       resources: [
         .process("Resources"),

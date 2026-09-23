@@ -8,6 +8,7 @@
 import SwiftUI
 import SettingsUI
 import MarkEditKit
+import Workspace
 
 @MainActor
 struct GeneralSettingsView: View {
@@ -41,6 +42,10 @@ struct GeneralSettingsView: View {
           AppPreferences.General.newWindowBehavior = newWindowBehavior
         }
         .formMenuPicker()
+
+        // Fork addition: which folder the sidebar opens with. Its own view, in the Workspace
+        // module, so that its strings stay out of `MarkEditMac/Resources/Localizable.xcstrings`
+        LaunchFolderSettingsView()
 
         Toggle(Localized.Settings.quitAlwaysKeepsWindows, isOn: $quitAlwaysKeepsWindows)
           .onChange(of: quitAlwaysKeepsWindows) {

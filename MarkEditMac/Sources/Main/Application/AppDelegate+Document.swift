@@ -115,6 +115,13 @@ private extension AppDelegate {
 
   @discardableResult
   func openOrCreateDocument(sender: NSApplication) -> Bool {
+    // Fork addition: a folder-rooted app answers this with its sidebar, not with a panel.
+    // See `AppDelegate.opensUntitledFileForWorkspace`.
+    if opensUntitledFileForWorkspace {
+      States.untitledFileOpenedDate = Date.timeIntervalSinceReferenceDate
+      return true
+    }
+
     switch AppPreferences.General.newWindowBehavior {
     case .openDocument:
       // The system occasionally runs this twice in a row, prevent duplicate panels

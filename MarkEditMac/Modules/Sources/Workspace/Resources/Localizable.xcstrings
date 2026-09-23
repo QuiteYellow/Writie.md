@@ -1,14 +1,74 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%@ (unavailable)" : {
+      "comment" : "Settings row for a pinned folder that cannot be opened right now — deleted, or on a volume that is not mounted. %@ is the folder name."
+    },
     "%@ can’t be read" : {
       "comment" : "Sidebar state when the chosen folder can't be listed. %@ is the folder name."
+    },
+    "Cancel" : {
+      "comment" : "Dismisses the rename alert without renaming anything."
+    },
+    "Choose" : {
+      "comment" : "Confirmation button of the panel that picks the sidebar's folder"
+    },
+    "Choose Folder…" : {
+      "comment" : "Opens a panel to pick the folder the sidebar lists."
+    },
+    "Close Folder" : {
+      "comment" : "Stops listing the current folder, returning the sidebar to its empty state."
+    },
+    "Custom" : {
+      "comment" : "Default Folder option: always open one folder, pinned in Settings."
+    },
+    "Default Folder:" : {
+      "comment" : "Settings label for which folder the app opens with when it launches."
+    },
+    "Hide Sidebar" : {
+      "comment" : "Menu item that hides the folder sidebar. Shown while it is visible."
+    },
+    "Last Used" : {
+      "comment" : "Default Folder option: open whichever folder was open when the app last quit."
+    },
+    "Name" : {
+      "comment" : "Label of the text field holding the file's new name."
+    },
+    "New File" : {
+      "comment" : "Context menu item that creates an empty file in the folder and opens it."
+    },
+    "No folder chosen" : {
+      "comment" : "Settings row shown while Default Folder is Custom but nothing has been pinned yet."
     },
     "No folder is open" : {
       "comment" : "Sidebar state before a folder has been chosen."
     },
+    "OK" : {
+      "comment" : "Dismisses the alert reporting a file operation that failed."
+    },
+    "Open in New Window" : {
+      "comment" : "Context menu item that opens the file in a window of its own instead of replacing the current one."
+    },
+    "Remove" : {
+      "comment" : "Clears the pinned Default Folder, leaving nothing pinned."
+    },
+    "Rename" : {
+      "comment" : "Title and confirmation button of the rename alert."
+    },
+    "Rename…" : {
+      "comment" : "Context menu item that starts renaming the file or folder."
+    },
+    "Reveal in Finder" : {
+      "comment" : "Context menu item that shows the file or folder in the Finder."
+    },
+    "Show Sidebar" : {
+      "comment" : "Menu item that reveals the folder sidebar. Shown while it is hidden."
+    },
     "This folder is empty" : {
       "comment" : "Sidebar state when the chosen folder has nothing to show."
+    },
+    "Untitled" : {
+      "comment" : "Base name for a file created from the sidebar, before any number is appended."
     }
   },
   "version" : "1.0"
