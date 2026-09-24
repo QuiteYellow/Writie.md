@@ -27,7 +27,7 @@ struct WorkspaceModelTests {
     let first = try scratch.folder(["one.md"])
     let second = try scratch.folder(["three.md", "two.md"])
     let store = scratch.store()
-    let model = WorkspaceModel(host: nil, options: .markdown, roots: store)
+    let model = WorkspaceModel(host: nil, fileExtensions: .markdown, filter: scratch.filter(), roots: store)
 
     #expect(model.root == nil)
 
@@ -47,7 +47,7 @@ struct WorkspaceModelTests {
 
     let folder = try scratch.folder(["one.md"])
     let store = scratch.store()
-    let model = WorkspaceModel(host: nil, options: .markdown, roots: store)
+    let model = WorkspaceModel(host: nil, fileExtensions: .markdown, filter: scratch.filter(), roots: store)
 
     store.useWithoutSaving(folder)
     try await waitForListing(["one.md"], in: model)
@@ -76,7 +76,7 @@ struct WorkspaceModelTests {
 
     let root = try scratch.folder(["sub/inner.md", "top.md"])
     let store = scratch.store()
-    let model = WorkspaceModel(host: nil, options: .markdown, roots: store)
+    let model = WorkspaceModel(host: nil, fileExtensions: .markdown, filter: scratch.filter(), roots: store)
 
     store.useWithoutSaving(root)
     try await waitForListing(["sub", "top.md"], in: model)
@@ -109,7 +109,7 @@ struct WorkspaceModelTests {
 
     let root = try scratch.folder(["one.md"])
     let store = scratch.store()
-    let model = WorkspaceModel(host: nil, options: .markdown, roots: store)
+    let model = WorkspaceModel(host: nil, fileExtensions: .markdown, filter: scratch.filter(), roots: store)
 
     store.useWithoutSaving(root)
     try await waitForListing(["one.md"], in: model)
@@ -130,7 +130,7 @@ struct WorkspaceModelTests {
 
     let root = try scratch.folder(["sub/inner.md"])
     let store = scratch.store()
-    let model = WorkspaceModel(host: nil, options: .markdown, roots: store)
+    let model = WorkspaceModel(host: nil, fileExtensions: .markdown, filter: scratch.filter(), roots: store)
 
     store.useWithoutSaving(root)
     try await waitForListing(["sub"], in: model)
@@ -156,7 +156,7 @@ struct WorkspaceModelTests {
 
     let root = try scratch.folder(["sub/inner.md", "top.md"])
     let store = scratch.store()
-    let model = WorkspaceModel(host: nil, options: .markdown, roots: store)
+    let model = WorkspaceModel(host: nil, fileExtensions: .markdown, filter: scratch.filter(), roots: store)
 
     store.useWithoutSaving(root)
     try await waitForListing(["sub", "top.md"], in: model)
@@ -182,7 +182,7 @@ struct WorkspaceModelTests {
     try FileManager.default.removeItem(at: folder)
 
     let store = scratch.store()
-    let model = WorkspaceModel(host: nil, options: .markdown, roots: store)
+    let model = WorkspaceModel(host: nil, fileExtensions: .markdown, filter: scratch.filter(), roots: store)
 
     store.useWithoutSaving(folder)
     try await waitFor("the folder to report itself unreadable") {
@@ -192,6 +192,50 @@ struct WorkspaceModelTests {
 
       return false
     }
+  }
+
+  /**
+   A filter change reaches a window that is already open, and leaves the tree as it was.
+
+   This is the half of group B that had to be built rather than exposed. The scan options used
+   to be assembled once, in a `lazy var` in the app target, so a window listed whatever the
+   preferences said at the moment it was created — and the *old* rule was worse than stale,
+   because the hidden-file half of it came from the save panel's own checkbox.
+
+   Two things are asserted and the second is the one worth a test on its own: the new listing
+   arrives, and the expanded subfolder is **still expanded and still listed** afterwards.
+   Re-listing through `reload()` would pass the first and fail the second, collapsing the tree
+   back to the root every time somebody flipped a switch in Settings.
+   */
+  @Test
+  func aFilterChangeReachesAnOpenWindow() async throws {
+    let scratch = try Scratch()
+    defer { scratch.tearDown() }
+
+    let root = try scratch.folder(["assets/photo.png", "sub/inner.md", "sub/inner.png", "note.md", "photo.png"])
+    let store = scratch.store()
+    let filter = scratch.filter()
+    filter.hidesAssetsFolders = true
+
+    let model = WorkspaceModel(host: nil, fileExtensions: .markdown, filter: filter, roots: store)
+    store.useWithoutSaving(root)
+    try await waitForListing(["sub", "note.md"], in: model)
+
+    let sub = try #require(model.listing(of: root)?.first)
+    model.setExpanded(true, for: sub.url)
+    try await waitFor("the expanded subfolder to be listed") {
+      model.listing(of: sub.url)?.map(\.name) == ["inner.md"]
+    }
+
+    filter.showsAllFiles = true
+    try await waitForListing(["sub", "note.md", "photo.png"], in: model)
+    #expect(model.isExpanded(sub.url), "the tree collapsed when a preference changed")
+    try await waitFor("the expanded subfolder to be re-listed") {
+      model.listing(of: sub.url)?.map(\.name) == ["inner.md", "inner.png"]
+    }
+
+    filter.hidesAssetsFolders = false
+    try await waitForListing(["assets", "sub", "note.md", "photo.png"], in: model)
   }
 }
 
@@ -205,7 +249,7 @@ struct WorkspaceFileActionTests {
 
     let root = try scratch.folder(["one.md"])
     let store = scratch.store()
-    let model = WorkspaceModel(host: nil, options: .markdown, roots: store)
+    let model = WorkspaceModel(host: nil, fileExtensions: .markdown, filter: scratch.filter(), roots: store)
 
     store.useWithoutSaving(root)
     try await waitForListing(["one.md"], in: model)
@@ -216,7 +260,7 @@ struct WorkspaceFileActionTests {
     #expect(model.proposedName == "one.md")
 
     model.proposedName = "renamed.md"
-    model.commitRenaming()
+    model.commitPrompt()
 
     #expect(model.selection?.lastPathComponent == "renamed.md")
     #expect(model.failure == nil)
@@ -235,7 +279,7 @@ struct WorkspaceFileActionTests {
 
     let root = try scratch.folder(["one.md", "two.md"])
     let store = scratch.store()
-    let model = WorkspaceModel(host: nil, options: .markdown, roots: store)
+    let model = WorkspaceModel(host: nil, fileExtensions: .markdown, filter: scratch.filter(), roots: store)
 
     store.useWithoutSaving(root)
     try await waitForListing(["one.md", "two.md"], in: model)
@@ -243,7 +287,7 @@ struct WorkspaceFileActionTests {
     let one = try #require(model.listing(of: root)?.first).url
     model.beginRenaming(one)
     model.proposedName = "two.md"
-    model.commitRenaming()
+    model.commitPrompt()
 
     #expect(model.failure?.isEmpty == false)
     #expect(FileManager.default.fileExists(atPath: one.path))
@@ -257,7 +301,7 @@ struct WorkspaceFileActionTests {
     let root = try scratch.folder(["Untitled.md"])
     let store = scratch.store()
     let host = RecordingHost()
-    let model = WorkspaceModel(host: host, options: .markdown, roots: store)
+    let model = WorkspaceModel(host: host, fileExtensions: .markdown, filter: scratch.filter(), roots: store)
 
     store.useWithoutSaving(root)
     try await waitForListing(["Untitled.md"], in: model)
@@ -282,7 +326,7 @@ struct WorkspaceFileActionTests {
     let root = try scratch.folder(["sub/inner.md"])
     let store = scratch.store()
     let host = RecordingHost()
-    let model = WorkspaceModel(host: host, options: .markdown, roots: store)
+    let model = WorkspaceModel(host: host, fileExtensions: .markdown, filter: scratch.filter(), roots: store)
 
     store.useWithoutSaving(root)
     try await waitForListing(["sub"], in: model)
@@ -309,7 +353,7 @@ struct WorkspaceFileActionTests {
     let root = try scratch.folder(["one.md"])
     let store = scratch.store()
     let host = RecordingHost()
-    let model = WorkspaceModel(host: host, options: .markdown, roots: store)
+    let model = WorkspaceModel(host: host, fileExtensions: .markdown, filter: scratch.filter(), roots: store)
 
     store.useWithoutSaving(root)
     try await waitForListing(["one.md"], in: model)
@@ -318,6 +362,93 @@ struct WorkspaceFileActionTests {
     model.openInNewWindow(one)
     #expect(host.openedInNewWindow == [one])
     #expect(host.openedInPlace.isEmpty)
+  }
+  /**
+   The window's own file gets no "open it elsewhere" items, because they would do nothing.
+
+   Asserted through `isShowing` rather than through the menu, which is a SwiftUI `View` and not
+   reachable from a unit test. It reads `selection` rather than the host's document, and that is
+   forced: the host's URL is not observable, so a menu built from it is never rebuilt — measured
+   against the running app, where both items stayed on offer for the file it was showing.
+   */
+  @Test
+  func doesNotOfferToOpenTheFileTheWindowAlreadyShows() throws {
+    let scratch = try Scratch()
+    defer { scratch.tearDown() }
+
+    let folder = try scratch.folder(["alpha.md", "beta.md"])
+    let store = scratch.store()
+    store.useWithoutSaving(folder)
+
+    let model = WorkspaceModel(host: RecordingHost(), fileExtensions: .markdown, filter: scratch.filter(), roots: store)
+
+    model.selection = folder.appending(path: "alpha.md")
+    #expect(model.isShowing(folder.appending(path: "alpha.md")))
+    #expect(!model.isShowing(folder.appending(path: "beta.md")))
+
+    // A window with no document offers the items for everything, which is the launch-draft state
+    model.selection = nil
+    #expect(!model.isShowing(folder.appending(path: "alpha.md")))
+  }
+
+  /**
+   New Folder asks before it creates, so Cancel leaves nothing behind.
+
+   It used to create "Untitled Folder" and then open the rename alert on it, which looked the same
+   and was not: cancelling that alert left the folder on disk. This asserts the order — prompt,
+   then create — from both ends.
+   */
+  @Test
+  func newFolderCreatesNothingUntilTheNameIsConfirmed() throws {
+    let scratch = try Scratch()
+    defer { scratch.tearDown() }
+
+    let folder = try scratch.folder(["alpha.md"])
+    let store = scratch.store()
+    store.useWithoutSaving(folder)
+    let model = WorkspaceModel(host: nil, fileExtensions: .markdown, filter: scratch.filter(), roots: store)
+
+    model.beginNewFolder(near: folder.appending(path: "alpha.md"))
+    #expect(model.proposedName == "Untitled Folder")
+
+    // Compared as paths with the trailing slash normalised, not as URLs.
+    // `deletingLastPathComponent()` hands back a *directory* URL, whose path keeps a trailing
+    // slash that the fixture's own URL does not have — and `URL ==` is string equality, so the
+    // two are unequal while naming the same folder. Measured: `path(percentEncoded:)` keeps that
+    // slash, where the deprecated `path` used to strip it.
+    if case .newFolder(let directory) = model.prompt {
+      #expect(folderPath(directory) == folderPath(folder))
+    } else {
+      Issue.record("New Folder did not ask for a name")
+    }
+    #expect(try contents(of: folder) == ["alpha.md"], "the folder was created before the name was confirmed")
+
+    model.cancelPrompt()
+    #expect(model.prompt == nil)
+    #expect(try contents(of: folder) == ["alpha.md"], "cancelling left a folder behind")
+
+    model.beginNewFolder(near: folder.appending(path: "alpha.md"))
+    model.proposedName = "Notes"
+    model.commitPrompt()
+    #expect(try contents(of: folder) == ["Notes", "alpha.md"])
+
+    // A name the user typed that is already taken is an error, not a silent "Notes 2"
+    model.beginNewFolder(near: folder.appending(path: "alpha.md"))
+    model.proposedName = "Notes"
+    model.commitPrompt()
+    #expect(model.failure != nil, "a colliding name reported nothing")
+    #expect(try contents(of: folder) == ["Notes", "alpha.md"])
+  }
+
+  /// A directory's path with any trailing slash removed, so that two spellings of one folder
+  /// compare equal. See the comment at the call site for why that is needed at all.
+  private func folderPath(_ url: URL) -> String {
+    let path = url.path(percentEncoded: false)
+    return path.count > 1 && path.hasSuffix("/") ? String(path.dropLast()) : path
+  }
+
+  private func contents(of folder: URL) throws -> [String] {
+    try FileManager.default.contentsOfDirectory(atPath: folder.path).sorted()
   }
 }
 
@@ -366,8 +497,4 @@ private extension WaitsForTheSidebar {
 
     Issue.record("Timed out waiting for \(description)", sourceLocation: sourceLocation)
   }
-}
-
-private extension FolderScanner.Options {
-  static let markdown = Self(fileExtensions: ["md", "markdown", "txt"], showsHiddenFiles: false)
 }

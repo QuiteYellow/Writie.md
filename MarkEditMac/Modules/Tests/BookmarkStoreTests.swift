@@ -160,24 +160,3 @@ struct BookmarkStoreTests {
     #expect(scratch.store().restore() == nil, "A failed save must not leave a bookmark behind")
   }
 }
-
-// MARK: - Private
-
-private extension BookmarkStoreTests {
-  /**
-   Compare two URLs by the folder they name rather than by how they spell it.
-
-   `/var/…` and `/private/var/…/` are the same directory, and which spelling comes back
-   depends on whether the URL was built here or resolved from a bookmark. What the store owes
-   its caller is the right folder, spelled consistently — `canonicalPath` checks the first
-   half and `namesTheFolderTheSameWayBeforeAndAfterARelaunch` checks the second.
-   */
-  func expectSameFolder(_ url: URL?, _ expected: URL, sourceLocation: SourceLocation = #_sourceLocation) throws {
-    let url = try #require(url, "No folder", sourceLocation: sourceLocation)
-    #expect(try canonicalPath(of: url) == canonicalPath(of: expected), sourceLocation: sourceLocation)
-  }
-
-  func canonicalPath(of url: URL) throws -> String {
-    try #require(url.resourceValues(forKeys: [.canonicalPathKey]).canonicalPath)
-  }
-}

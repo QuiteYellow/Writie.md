@@ -83,6 +83,50 @@ struct FolderScannerTests {
     #expect(showing.map(\.name) == [".hidden.md", "shown.md"])
   }
 
+  /// The filter is about file *types*, so a dotfile stays hidden until asked for separately —
+  /// the same two axes Finder has, and the reason the settings pane carries two switches.
+  @Test
+  func showsEveryExtensionWhenAskedAndStillHidesDotFiles() async throws {
+    let scratch = try Scratch()
+    defer { scratch.tearDown() }
+
+    let root = try scratch.folder([".hidden.md", "notes.md", "photo.png", "paper.pdf", "README"])
+    let nodes = try await FolderScanner.contents(of: root, options: .everyFile)
+
+    #expect(Set(nodes.map(\.name)) == ["notes.md", "photo.png", "paper.pdf", "README"])
+  }
+
+  /**
+   The assets folder, hidden by its name and by nothing else.
+
+   Matched lowercased, which is what the old app did and what makes `Assets` and `assets` the
+   same folder to this rule. The fixture is spelled `Assets` for exactly that reason — and it
+   cannot also hold an `assets`, because the volume this runs on is case-insensitive and the
+   two would be one directory.
+
+   `assets-and-more` and the *file* `assets.md` are the cases a sloppier rule gets wrong:
+   matching a prefix would hide the first, and not asking whether the thing is a directory
+   would hide the second.
+   */
+  @Test
+  func hidesAssetsFoldersByNameWhenAsked() async throws {
+    let scratch = try Scratch()
+    defer { scratch.tearDown() }
+
+    let root = try scratch.folder([
+      "Assets/paper.pdf",
+      "assets-and-more/note.md",
+      "assets.md",
+      "notes.md",
+    ])
+
+    let hiding = try await FolderScanner.contents(of: root, options: .hidingAssets)
+    #expect(hiding.map(\.name) == ["assets-and-more", "assets.md", "notes.md"])
+
+    let showing = try await FolderScanner.contents(of: root, options: .markdown)
+    #expect(showing.map(\.name) == ["Assets", "assets-and-more", "assets.md", "notes.md"])
+  }
+
   @Test
   func treatsAPackageAsAFile() async throws {
     let scratch = try Scratch()
@@ -112,7 +156,38 @@ struct FolderScannerTests {
 // MARK: - Private
 
 private extension FolderScanner.Options {
-  static let markdown = Self(fileExtensions: ["md", "markdown", "txt"], showsHiddenFiles: false)
-  static let markdownShowingHidden = Self(fileExtensions: ["md", "markdown", "txt"], showsHiddenFiles: true)
-  static let textBundle = Self(fileExtensions: ["textbundle"], showsHiddenFiles: false)
+  static let markdown = Self(
+    fileExtensions: ["md", "markdown", "txt"],
+    showsAllFiles: false,
+    showsHiddenFiles: false,
+    hidesAssetsFolders: false
+  )
+
+  static let markdownShowingHidden = Self(
+    fileExtensions: ["md", "markdown", "txt"],
+    showsAllFiles: false,
+    showsHiddenFiles: true,
+    hidesAssetsFolders: false
+  )
+
+  static let everyFile = Self(
+    fileExtensions: ["md", "markdown", "txt"],
+    showsAllFiles: true,
+    showsHiddenFiles: false,
+    hidesAssetsFolders: false
+  )
+
+  static let hidingAssets = Self(
+    fileExtensions: ["md", "markdown", "txt"],
+    showsAllFiles: false,
+    showsHiddenFiles: false,
+    hidesAssetsFolders: true
+  )
+
+  static let textBundle = Self(
+    fileExtensions: ["textbundle"],
+    showsAllFiles: false,
+    showsHiddenFiles: false,
+    hidesAssetsFolders: false
+  )
 }

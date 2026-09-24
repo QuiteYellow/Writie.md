@@ -170,6 +170,81 @@ final class WorkspaceLaunchUITests: XCTestCase {
     )
   }
 
+  /**
+   A filter switched in Settings re-lists a window that is already open.
+
+   The end-to-end half of backlog group B, and the half a module test cannot reach: it asserts
+   that the Settings pane writes to the same `SidebarFilter` every open window is watching.
+   Worth its own test because the failure mode has already happened once in this fork — group
+   A's context menu was first built against state SwiftUI does not observe, and it silently
+   never updated while looking completely correct in the code.
+
+   It is in this suite rather than the sidebar one because it writes preferences that outlive
+   the process, which is what `bookAnUndo()` and the reset launch are for. The switch is turned
+   back off inside the test as well, so that the assertion covers both directions.
+   */
+  func testTheSidebarFilterReachesAnOpenWindow() throws {
+    bookAnUndo()
+
+    let root = try makeFixture(["note.md", "photo.png"])
+    let app = launchApp(root: root)
+
+    let note = app.descendants(matching: .any)["workspace.row.note.md"]
+    XCTAssertTrue(note.waitForExistence(timeout: Constants.timeout), "the folder's sidebar did not open with it")
+
+    let photo = app.descendants(matching: .any)["workspace.row.photo.png"]
+    XCTAssertFalse(photo.exists, "a PNG is listed before anything asked for one")
+
+    let allFiles = settingsToggle(Constants.showsAllFilesIdentifier, in: app)
+    allFiles.click()
+    XCTAssertTrue(photo.waitForExistence(timeout: Constants.timeout), "the open window kept the old filter")
+
+    allFiles.click()
+    let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: photo)
+    XCTAssertEqual(
+      XCTWaiter().wait(for: [gone], timeout: Constants.timeout),
+      .completed,
+      "turning the filter back on left the PNG listed"
+    )
+  }
+
+  /**
+   The suite's own undo puts a folder back; it does not wipe one.
+
+   **This test exists because the wipe happened.** On 2026-09-24 a run of this suite deleted the
+   security-scoped bookmark for a folder someone was actually working in, and the symptom was
+   the app opening a file panel on every launch: the fork's launch rule reads "no folder is
+   remembered", which was true, and defers to upstream's behaviour, which is the panel. Nothing
+   can recreate a bookmark but the user picking that folder again, so this is data loss rather
+   than an inconvenience, and it is worth five launches to know it cannot recur.
+
+   The sequence is what it is because a test cannot write a bookmark any other way than through
+   these overrides — `DEBUG_WORKSPACE_ADOPT_STATE` is what turns a folder this test wrote into a
+   folder that looks as though it was there first.
+   */
+  func testTheSuiteUndoRestoresTheFolderItFound() throws {
+    let theirs = try makeFixture(["theirs.md"])
+    let fixture = try makeFixture(["fixture.md"])
+
+    // A folder someone was working in, and then it is all this suite ever knew
+    launchApp(pinnedRoot: nil, savedRoot: theirs).terminate()
+    launch(adoptingState: true).terminate()
+
+    // A test comes along and opens its own folder, then books its undo the way every test here does
+    bookAnUndo()
+    launchApp(pinnedRoot: nil, savedRoot: fixture).terminate()
+    launch(resettingState: true).terminate()
+
+    // What a real launch finds afterwards
+    let app = XCUIApplication()
+    app.launchArguments += ["-NSQuitAlwaysKeepsWindows", "NO", "-ApplePersistence", "NO"]
+    app.launch()
+
+    let footer = app.descendants(matching: .any)["workspace.footer.root"]
+    XCTAssertTrue(footer.waitForExistence(timeout: Constants.timeout), "no root control")
+    XCTAssertEqual(text(of: footer), theirs.lastPathComponent, "the suite's undo wiped a folder instead of restoring it")
+  }
+
   // MARK: - Private
 
   private enum Constants {
@@ -184,6 +259,61 @@ final class WorkspaceLaunchUITests: XCTestCase {
 
     static let pinnedFolderIdentifier = "workspace.settings.pinned-folder"
     static let choosePinnedFolderIdentifier = "workspace.settings.choose-pinned-folder"
+    static let showsAllFilesIdentifier = "workspace.settings.shows-all-files"
+  }
+
+  /// Open Settings on the General tab and hand back one of the fork's own controls.
+  ///
+  /// Settings opens on the Editor tab — `AppDelegate.showPreferences` lists them as editor,
+  /// assistant, general, window — so the tab has to be selected before anything it holds
+  /// exists. Measured, by a test failing against a Settings window that was perfectly fine.
+  private func settingsToggle(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
+    app.typeKey(",", modifierFlags: .command)
+
+    let general = app.toolbars.buttons[Constants.generalTabLabel]
+    XCTAssertTrue(general.waitForExistence(timeout: Constants.timeout), "no General tab in Settings")
+    general.click()
+
+    let control = app.descendants(matching: .any)[identifier]
+    XCTAssertTrue(control.waitForExistence(timeout: Constants.timeout), "no \(identifier) in Settings")
+    return control
+  }
+
+  /**
+   Put back what this test is about to write.
+
+   Every launch that writes state outliving the process books one of these *before* writing,
+   so that a test which fails halfway still leaves the app as it found it. The reset is a
+   launch of its own rather than a defaults write, because the app is sandboxed: its
+   preferences live in its container, and only the app can reach them.
+   */
+  /// One of the state-only debug launches: adopt what is stored as the state to go back to,
+  /// or go back to it. Neither shows anything worth asserting on, so both are launched and
+  /// terminated rather than driven.
+  private func launch(adoptingState: Bool = false, resettingState: Bool = false) -> XCUIApplication {
+    let app = XCUIApplication()
+    app.launchArguments += ["-NSQuitAlwaysKeepsWindows", "NO", "-ApplePersistence", "NO"]
+
+    if adoptingState {
+      app.launchEnvironment["DEBUG_WORKSPACE_ADOPT_STATE"] = "YES"
+    }
+
+    if resettingState {
+      app.launchEnvironment["DEBUG_WORKSPACE_LAUNCH_RESET"] = "YES"
+    }
+
+    app.launch()
+    return app
+  }
+
+  private func bookAnUndo() {
+    addTeardownBlock {
+      let reset = XCUIApplication()
+      reset.launchArguments += ["-NSQuitAlwaysKeepsWindows", "NO", "-ApplePersistence", "NO"]
+      reset.launchEnvironment["DEBUG_WORKSPACE_LAUNCH_RESET"] = "YES"
+      reset.launch()
+      reset.terminate()
+    }
   }
 
   /**
@@ -206,13 +336,7 @@ final class WorkspaceLaunchUITests: XCTestCase {
     // app under test is the one installed on this machine, sharing its `UserDefaults` with
     // every real launch. So each of them books its own undo before writing anything: without
     // it, a test that pins a fixture and then deletes it leaves the app pinned to nothing.
-    addTeardownBlock {
-      let reset = XCUIApplication()
-      reset.launchArguments += ["-NSQuitAlwaysKeepsWindows", "NO", "-ApplePersistence", "NO"]
-      reset.launchEnvironment["DEBUG_WORKSPACE_LAUNCH_RESET"] = "YES"
-      reset.launch()
-      reset.terminate()
-    }
+    bookAnUndo()
 
     let app = XCUIApplication()
     // Window restoration *and* document persistence off, for every launch in this target.

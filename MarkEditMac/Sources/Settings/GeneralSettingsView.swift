@@ -43,9 +43,11 @@ struct GeneralSettingsView: View {
         }
         .formMenuPicker()
 
-        // Fork addition: which folder the sidebar opens with. Its own view, in the Workspace
-        // module, so that its strings stay out of `MarkEditMac/Resources/Localizable.xcstrings`
+        // Fork addition: which folder the sidebar opens with, and what it lists. Their own
+        // views, in the Workspace module, so that their strings stay out of
+        // `MarkEditMac/Resources/Localizable.xcstrings`
         LaunchFolderSettingsView()
+        SidebarSettingsView()
 
         Toggle(Localized.Settings.quitAlwaysKeepsWindows, isOn: $quitAlwaysKeepsWindows)
           .onChange(of: quitAlwaysKeepsWindows) {

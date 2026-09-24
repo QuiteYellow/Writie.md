@@ -26,15 +26,34 @@ public enum FolderScanner {
   }
 
   public struct Options: Sendable {
-    /// Extensions a file must have to be listed. Files with no extension are always listed.
+    /// Extensions a file must have to be listed, when `showsAllFiles` is off. Files with no
+    /// extension are always listed.
     let fileExtensions: Set<String>
+
+    /// List every file, whatever its extension. `fileExtensions` is then unused.
+    let showsAllFiles: Bool
     let showsHiddenFiles: Bool
 
-    public init(fileExtensions: Set<String>, showsHiddenFiles: Bool) {
+    /// Leave out directories named `assets`, whatever their case — the convention this app
+    /// drops attachments into, which is clutter in a list of notes.
+    let hidesAssetsFolders: Bool
+
+    public init(
+      fileExtensions: Set<String>,
+      showsAllFiles: Bool,
+      showsHiddenFiles: Bool,
+      hidesAssetsFolders: Bool
+    ) {
       self.fileExtensions = fileExtensions
+      self.showsAllFiles = showsAllFiles
       self.showsHiddenFiles = showsHiddenFiles
+      self.hidesAssetsFolders = hidesAssetsFolders
     }
   }
+
+  /// The one name the assets convention is spelled with, compared lowercased. Kept here so
+  /// that hiding such a folder and (group D) creating one cannot drift apart.
+  public static let assetsFolderName = "assets"
 
   public static func contents(of directory: URL, options: Options) async throws(Failure) -> [FileNode] {
     let keys: [URLResourceKey] = [.isDirectoryKey, .isPackageKey]
@@ -57,7 +76,8 @@ public enum FolderScanner {
 
       // A package (.textbundle, .app) is a directory the user means as one thing
       let isDirectory = values?.isDirectory == true && values?.isPackage != true
-      guard isDirectory || isListed(url, options: options) else {
+      let listed = isDirectory ? isListed(directory: url, options: options) : isListed(url, options: options)
+      guard listed else {
         continue
       }
 
@@ -72,9 +92,23 @@ public enum FolderScanner {
 
 private extension FolderScanner {
   static func isListed(_ url: URL, options: Options) -> Bool {
+    guard !options.showsAllFiles else {
+      return true
+    }
+
     let ext = url.pathExtension
     // Notes folders are full of extension-less files, and the app opens them as plain text
     return ext.isEmpty || options.fileExtensions.contains(ext.lowercased())
+  }
+
+  /// A directory is listed whatever it holds — the tree is how you find a file, not a filter
+  /// on one — with the single exception the assets convention earns.
+  static func isListed(directory url: URL, options: Options) -> Bool {
+    guard options.hidesAssetsFolders else {
+      return true
+    }
+
+    return url.lastPathComponent.lowercased() != Self.assetsFolderName
   }
 
   /// Folders first, then by name the way Finder orders it — "10" after "9", not before it.

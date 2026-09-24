@@ -131,6 +131,22 @@ public final class BookmarkStore {
     adopt(nil, isScoped: false)
   }
 
+  /**
+   Open `folder`, and remember it if the sandbox lets us.
+
+   The fallback is not a detail: a folder that cannot be bookmarked — a symlink to one, at M5 —
+   is still a folder somebody just chose, and opening it for this session is a better answer
+   than behaving as though the gesture never happened. Every route to a new root goes through
+   here: the footer's panel, a folder dropped on the sidebar, a folder dropped on the editor.
+   */
+  func open(_ folder: URL) {
+    do {
+      try save(folder)
+    } catch {
+      useWithoutSaving(folder)
+    }
+  }
+
   // MARK: - Private
 
   private enum Constants {

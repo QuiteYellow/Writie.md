@@ -8,6 +8,7 @@
 import WebKit
 import AppKitExtensions
 import MarkEditKit
+import Workspace
 
 /**
  https://github.com/WebKit/WebKit/blob/main/Source/WebKit/Shared/API/c/WKContextMenuItem.cpp
@@ -147,6 +148,17 @@ final class EditorWebView: WKWebView {
     // Let WebKit handle internal text drags
     guard !(sender.draggingSource is WKWebView) else {
       return super.performDragOperation(sender)
+    }
+
+    // Fork addition: a promise drag has no file on disk yet, and an untitled document has
+    // nowhere to put one — neither can be answered from a method that returns a Bool now.
+    // The fork takes those two over and calls back with real files; everything else falls
+    // through to the path below, unchanged. See `EditorDrops` and `drops.md` §1.3, §2.1.
+    if EditorDrops.takesOver(sender, in: window, then: { [weak self] fileURLs in
+      guard let self else { return }
+      actionDelegate?.editorWebView(self, didDrop: fileURLs)
+    }) {
+      return true
     }
 
     // Ignore placeholder file URLs (e.g. `file://`, unresolved promise drags) that

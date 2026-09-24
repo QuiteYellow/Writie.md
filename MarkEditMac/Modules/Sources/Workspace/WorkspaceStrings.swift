@@ -33,6 +33,35 @@ public enum WorkspaceStrings {
     )
   }
 
+  /// Shown when a file dropped on the editor could not be copied in beside the document. The
+  /// file system's own message goes underneath it.
+  static var dropFailed: String {
+    String(
+      localized: "The file couldn’t be added to this note",
+      bundle: .module,
+      comment: "Alert title when a dropped file could not be copied into the note's assets folder."
+    )
+  }
+
+  /// The button that opens the panel granting access to the folder a drop could not write to.
+  /// Worded as upstream words its own File ▸ Grant Folder Access…, because it *is* that.
+  static var grantAccess: String {
+    String(
+      localized: "Grant Access…",
+      bundle: .module,
+      comment: "Alert button that opens a panel to grant the app access to a folder."
+    )
+  }
+
+  /// Dismisses an alert without doing what it offered.
+  static var cancel: String {
+    String(
+      localized: "Cancel",
+      bundle: .module,
+      comment: "Dismisses the rename alert without renaming anything."
+    )
+  }
+
   /// The base name a file created from the sidebar gets. A file name rather than interface
   /// text, and localised for the same reason Finder localises "untitled folder".
   static var untitled: String {
@@ -40,6 +69,14 @@ public enum WorkspaceStrings {
       localized: "Untitled",
       bundle: .module,
       comment: "Base name for a file created from the sidebar, before any number is appended."
+    )
+  }
+
+  static var untitledFolder: String {
+    String(
+      localized: "Untitled Folder",
+      bundle: .module,
+      comment: "Base name for a folder created from the sidebar, before any number is appended."
     )
   }
 }

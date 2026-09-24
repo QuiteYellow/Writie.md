@@ -7,6 +7,7 @@
 
 import AppKit
 import MarkEditKit
+import Workspace
 
 final class EditorWindow: NSWindow {
   /// Forces `.preferred` tabbing for an on-demand window (e.g. "New Tab"),

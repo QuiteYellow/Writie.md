@@ -33,4 +33,30 @@ public protocol WorkspaceHost: AnyObject {
   /// Show `url` in a window of its own. The escape hatch for having two files at once, in a
   /// fork whose whole point is that clicking a row replaces the document rather than adding to it.
   func openInNewWindow(_ url: URL)
+
+  /// Show `url` as a tab of this window. The other escape hatch, and the one upstream's
+  /// maintainer pointed at when declining a folder view — so it should be at least as good here.
+  func openInNewTab(_ url: URL)
+
+  /// Whether the app can open `url` as a document — which decides what a drop does with it.
+  /// A Markdown or text file dropped on the editor is a file you want to *read*, so it opens;
+  /// a PNG is an attachment, so it is copied into `assets/` and linked. The app answers because
+  /// the list of types lives in its `Info.plist`, and asking `NSDocumentController` is the only
+  /// way to get the real answer rather than a hardcoded copy of it that drifts.
+  func canOpen(_ url: URL) -> Bool
+
+  /**
+   Ask for access to `folder`, and say whether it was given.
+
+   The sandbox grants a document's *file*, not the directory holding it, so a note opened from
+   outside the workspace folder has nowhere to put an attachment — measured, from a real drag:
+   *"couldn’t be copied because you don’t have permission to access “assets”"*. macOS's answer
+   to that is a folder the user picks in a panel, which is upstream's own File ▸ Grant Folder
+   Access…; the app reuses that machinery so the grant is remembered at every later launch.
+   */
+  func grantAccess(to folder: URL) async -> Bool
+
+  /// Whether this window may have tabs at all, which is the app's Tabbing Mode preference.
+  /// The menu asks so that it can leave the tab item out rather than override the setting.
+  var allowsTabs: Bool { get }
 }

@@ -5,6 +5,7 @@
 //
 
 import Foundation
+import Testing
 @testable import Workspace
 
 /**
@@ -82,6 +83,12 @@ struct Scratch {
     LaunchFolder(defaults: defaults, prefix: "test.launch-folder", current: current)
   }
 
+  /// A filter over this test's defaults, so that what a test lists never depends on the
+  /// switches whoever is running it has set in their own copy of the app.
+  func filter() -> SidebarFilter {
+    SidebarFilter(defaults: defaults, prefix: "test.sidebar-filter")
+  }
+
   func tearDown() {
     UserDefaults.standard.removePersistentDomain(forName: suite)
     try? FileManager.default.removeItem(at: root)
@@ -105,8 +112,30 @@ final class RecordingHost: WorkspaceHost {
   var currentFileURL: URL?
   var newFileExtension = "md"
 
+  /// What the real host reads from `AppPreferences.Window.tabbingMode`. Settable so a test can
+  /// ask what the menu does when the user has turned tabs off.
+  var allowsTabs = true
+
+  /// What the real host asks `NSDocumentController`, which knows the app's declared types and
+  /// is not available to a test. An extension list is the same answer in the cases that matter.
+  var openableExtensions: Set<String> = ["md", "markdown", "txt"]
+
+  func canOpen(_ url: URL) -> Bool {
+    openableExtensions.contains(url.pathExtension.lowercased())
+  }
+
+  /// What the real host answers with a panel. A test says yes or no up front instead.
+  var grantsAccess = false
+  private(set) var accessAskedFor = [URL]()
+
+  func grantAccess(to folder: URL) async -> Bool {
+    accessAskedFor.append(folder)
+    return grantsAccess
+  }
+
   private(set) var openedInPlace = [URL]()
   private(set) var openedInNewWindow = [URL]()
+  private(set) var openedInNewTab = [URL]()
 
   func openInPlace(_ url: URL) {
     openedInPlace.append(url)
@@ -115,4 +144,33 @@ final class RecordingHost: WorkspaceHost {
   func openInNewWindow(_ url: URL) {
     openedInNewWindow.append(url)
   }
+
+  func openInNewTab(_ url: URL) {
+    openedInNewTab.append(url)
+  }
+}
+
+extension Set<String> {
+  /// The extensions the app declares as its own, which is what the real sidebar is built with.
+  /// Shared by every suite that makes a `WorkspaceModel`.
+  static let markdown: Self = ["md", "markdown", "txt"]
+}
+
+/**
+ Compare two URLs by the folder they name rather than by how they spell it.
+
+ `/var/…` and `/private/var/…` are the same directory, and which spelling comes back depends on
+ whether the URL was built here or resolved from a bookmark — so any test that asserts on a
+ folder a `BookmarkStore` handed back has to ask this rather than `==`. One copy, shared: two
+ would drift, and the one that drifted would be the one nobody ran that day.
+ */
+@MainActor
+func expectSameFolder(_ url: URL?, _ expected: URL, sourceLocation: SourceLocation = #_sourceLocation) throws {
+  let url = try #require(url, "No folder", sourceLocation: sourceLocation)
+  #expect(try canonicalPath(of: url) == canonicalPath(of: expected), sourceLocation: sourceLocation)
+}
+
+@MainActor
+func canonicalPath(of url: URL) throws -> String {
+  try #require(url.resourceValues(forKeys: [.canonicalPathKey]).canonicalPath)
 }

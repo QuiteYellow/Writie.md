@@ -9,15 +9,20 @@ import AppKit
 import MarkEditKit
 
 extension AppDelegate {
-  func saveGrantedFolderAsBookmark() async {
+  // Fork addition: `startingAt` seeds the panel with the folder access is wanted for — a drop
+  // that cannot write beside the document asks for that folder by name — and the result says
+  // whether it was granted, so the caller can carry on with what it was doing.
+  @discardableResult
+  func saveGrantedFolderAsBookmark(startingAt folder: URL? = nil) async -> Bool {
     let openPanel = NSOpenPanel()
     openPanel.prompt = Localized.General.grantAccess
     openPanel.canChooseDirectories = true
     openPanel.canChooseFiles = false
     openPanel.allowsMultipleSelection = false
+    openPanel.directoryURL = folder
 
     guard await openPanel.begin() == .OK, let url = openPanel.url else {
-      return
+      return false
     }
 
     guard let newBookmark = try? url.bookmarkData(
@@ -25,7 +30,8 @@ extension AppDelegate {
       includingResourceValuesForKeys: nil,
       relativeTo: nil
     ) else {
-      return Logger.log(.error, "Failed to create bookmark data")
+      Logger.log(.error, "Failed to create bookmark data")
+      return false
     }
 
     let bookmarkData = AppPreferences.General.grantedFolderBookmark
@@ -43,6 +49,7 @@ extension AppDelegate {
 
     let encodedData = bookmarkList.appendingData(newBookmark).encodeToData()
     AppPreferences.General.grantedFolderBookmark = encodedData
+    return true
   }
 
   func startAccessingGrantedFolder() {

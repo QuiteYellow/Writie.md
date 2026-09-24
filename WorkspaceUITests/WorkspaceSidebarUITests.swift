@@ -142,7 +142,14 @@ final class WorkspaceSidebarUITests: XCTestCase {
     XCTAssertTrue(file.waitForExistence(timeout: Constants.timeout), "no row for alpha.md")
     file.rightClick()
 
-    let items = ["openInNewWindow", "newFile", "rename", "revealInFinder"].map { "workspace.menu.\($0)" }
+    // Every verb, in the order the menu draws them. Tabbing Mode defaults to `.automatic`, so
+    // Open in New Tab is showing; it is the one item the menu leaves out when tabs are off.
+    let items = [
+      "openInNewTab", "openInNewWindow",
+      "newFile", "newFolder",
+      "rename", "duplicate", "moveToTrash",
+      "copyPath", "revealInFinder",
+    ].map { "workspace.menu.\($0)" }
     for identifier in items {
       XCTAssertTrue(
         app.menuItems[identifier].waitForExistence(timeout: Constants.timeout),
@@ -158,6 +165,23 @@ final class WorkspaceSidebarUITests: XCTestCase {
     XCTAssertEqual(field.value as? String, "alpha.md")
 
     app.typeKey(.escape, modifierFlags: [])
+
+    // Open in New Tab's *effect*, asserted here rather than in a test of its own because this
+    // suite sits at SwiftLint's `type_body_length` ceiling. What tells a tab from a window:
+    // the app gains a tab group and does **not** gain a window. Measured 2026-09-24 — before
+    // the click `tabGroups` is 0 and `windows` is 1; after it, both are 1.
+    file.rightClick()
+    XCTAssertTrue(app.menuItems[Constants.openInNewTabIdentifier].waitForExistence(timeout: Constants.timeout))
+    app.menuItems[Constants.openInNewTabIdentifier].click()
+
+    let tabbed = expectation(for: NSPredicate(format: "count == 1"), evaluatedWith: app.tabGroups)
+    XCTAssertEqual(
+      XCTWaiter().wait(for: [tabbed], timeout: Constants.timeout),
+      .completed,
+      "Open in New Tab produced no tab group"
+    )
+
+    XCTAssertEqual(app.windows.count, 1, "Open in New Tab opened a window instead of a tab")
   }
 
   /// The sidebar cannot be dragged narrower than its footer needs: at the 144pt a previous
@@ -188,6 +212,17 @@ final class WorkspaceSidebarUITests: XCTestCase {
     XCTAssertTrue(alpha.waitForExistence(timeout: Constants.timeout))
     alpha.click()
     assertWindow(app, shows: "alpha.md", withRowSelected: "alpha.md")
+
+    // Neither "open it elsewhere" item is offered for the file this window is already showing:
+    // both would find the open document and just bring it forward. Asserted here because this is
+    // the test that has a window showing a known file; the menu-contents test right-clicks one
+    // the window is *not* showing, which is why all nine items appear there.
+    alpha.rightClick()
+    XCTAssertTrue(app.menuItems[Constants.newFileIdentifier].waitForExistence(timeout: Constants.timeout))
+    let shown = "window=\(app.windows.firstMatch.title) row=\(selectedRowIdentifier(in: app) ?? "nil")"
+    XCTAssertFalse(app.menuItems[Constants.openInNewTabIdentifier].exists, "offered a tab for the open file (\(shown))")
+    XCTAssertFalse(app.menuItems[Constants.openInNewWindowIdentifier].exists, "offered a window for the open file (\(shown))")
+    app.typeKey(.escape, modifierFlags: [])
 
     // A second tab, opened the way that used to leave it unhighlighted
     app.descendants(matching: .any)["workspace.row.beta.md"].rightClick()
@@ -250,6 +285,8 @@ final class WorkspaceSidebarUITests: XCTestCase {
     /// the split view's divider, which the outline's own frame does not include.
     static let alignmentSlack: Double = 24
     static let openInNewWindowIdentifier = "workspace.menu.openInNewWindow"
+    static let openInNewTabIdentifier = "workspace.menu.openInNewTab"
+    static let newFileIdentifier = "workspace.menu.newFile"
   }
 
   /**
@@ -301,22 +338,6 @@ final class WorkspaceSidebarUITests: XCTestCase {
     let item = windowMenu.menuItems[title]
     XCTAssertTrue(item.waitForExistence(timeout: Constants.timeout), "no Window menu entry for \(title)")
     item.click()
-  }
-
-  /// The identifier of whichever row the key window's sidebar is drawing as selected.
-  ///
-  /// `isSelected` belongs to the `OutlineRow`, not to the row view inside it — asserting on
-  /// the row view instead reads false for every row, including the selected one.
-  private func selectedRowIdentifier(in app: XCUIApplication) -> String? {
-    let rows = app.outlines.firstMatch.outlineRows
-    for index in 0..<rows.count {
-      let row = rows.element(boundBy: index)
-      if row.isSelected {
-        return row.descendants(matching: .staticText).firstMatch.identifier
-      }
-    }
-
-    return nil
   }
 
   /// What the window is showing, and what its sidebar says it is showing. Asserting both
@@ -421,6 +442,22 @@ extension XCTestCase {
     }
 
     return element.label
+  }
+
+  /// The identifier of whichever row the key window's sidebar is drawing as selected.
+  ///
+  /// `isSelected` belongs to the `OutlineRow`, not to the row view inside it — asserting on
+  /// the row view instead reads false for every row, including the selected one.
+  func selectedRowIdentifier(in app: XCUIApplication) -> String? {
+    let rows = app.outlines.firstMatch.outlineRows
+    for index in 0..<rows.count {
+      let row = rows.element(boundBy: index)
+      if row.isSelected {
+        return row.descendants(matching: .staticText).firstMatch.identifier
+      }
+    }
+
+    return nil
   }
 
   /**

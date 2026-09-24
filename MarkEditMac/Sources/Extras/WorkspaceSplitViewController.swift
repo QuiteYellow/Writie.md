@@ -6,6 +6,7 @@
 //
 
 import AppKit
+import UniformTypeIdentifiers
 import MarkEditKit
 import Workspace
 
@@ -77,6 +78,12 @@ final class WorkspaceSplitViewController: NSSplitViewController {
 
   override func viewWillAppear() {
     super.viewWillAppear()
+    hostDocumentDidChange()
+  }
+
+  /// Point the sidebar's highlight at whatever this window is showing now — or at nothing,
+  /// when that file is outside the folder being listed.
+  func hostDocumentDidChange() {
     sidebar.hostDocumentDidChange()
   }
 
@@ -188,7 +195,7 @@ final class WorkspaceSplitViewController: NSSplitViewController {
       return
     }
 
-    sidebar.hostDocumentDidChange()
+    hostDocumentDidChange()
   }
 
   /// This window's sidebar pane, collapsed or not.
@@ -245,12 +252,13 @@ final class WorkspaceSplitViewController: NSSplitViewController {
 
   private lazy var sidebar = WorkspaceSidebarController(
     host: self,
-    options: FolderScanner.Options(
-      // The types the app declares as its own, plus extension-less files, which notes
-      // folders are full of and which open as plain text
-      fileExtensions: Set(NewFilenameExtension.allCases.map(\.rawValue)),
-      showsHiddenFiles: AppPreferences.General.showHiddenFiles
-    )
+    // The types the app declares as its own, plus extension-less files, which notes folders
+    // are full of and which open as plain text. Everything else about what the sidebar lists
+    // is `SidebarFilter`, read at every scan — the hidden-file rule used to come from
+    // `AppPreferences.General.showHiddenFiles`, which is the *save panel's* checkbox, and it
+    // was captured here once, so neither of the two ways it could change reached a window
+    // that was already open.
+    fileExtensions: Set(NewFilenameExtension.allCases.map(\.rawValue))
   )
 }
 
@@ -267,6 +275,46 @@ extension WorkspaceSplitViewController: WorkspaceHost {
 
   var newFileExtension: String {
     AppPreferences.General.newFilenameExtension.rawValue
+  }
+
+  /**
+   Whether `url` is something this app *edits*, which is what decides whether a drop opens it
+   or attaches it.
+
+   **The two obvious answers are both wrong, and one of them shipped for an hour.**
+   `typeForContents(of:)` hands back a type for anything, inventing a dynamic UTI when it has
+   to. Pairing it with `documentClass(forType:)` looks like the fix and is not: upstream
+   declares a **`public.data` "Binary File"** type — role `Viewer`, for opening a binary in
+   read-only mode — so every file on the disk has a document class here, and a dropped PNG
+   opened as a document instead of landing in `assets/`. The UI test caught it; the reasoning
+   that produced it did not.
+
+   So the question is asked of the app's own declarations, filtered to the types it declares as
+   an **Editor**: the Markdown spellings, `.textbundle`, and the plain-text family. Derived
+   rather than hardcoded, so a type upstream adds is covered without anyone remembering this.
+
+   A file with no extension is text by the same convention the sidebar lists it under — notes
+   folders are full of them and the app opens them as plain text.
+   */
+  func canOpen(_ url: URL) -> Bool {
+    guard !url.pathExtension.isEmpty else {
+      return true
+    }
+
+    guard let type = UTType(filenameExtension: url.pathExtension) else {
+      return false
+    }
+
+    return Self.editableTypes.contains { type.conforms(to: $0) }
+  }
+
+  func grantAccess(to folder: URL) async -> Bool {
+    guard let delegate = NSApp.appDelegate else {
+      return false
+    }
+
+    NSApp.closeOpenPanels()
+    return await delegate.saveGrantedFolderAsBookmark(startingAt: folder)
   }
 
   func openInPlace(_ url: URL) {
@@ -306,52 +354,60 @@ extension WorkspaceSplitViewController: WorkspaceHost {
       }
     }
   }
-}
 
-// MARK: - Titlebar
+  var allowsTabs: Bool {
+    AppPreferences.Window.tabbingMode != .disallowed
+  }
 
-extension NSWindow {
   /**
-   Whether this window has a workspace sidebar at all, collapsed or not.
+   Open `url` as a tab of this window — the mirror image of `openInNewWindow` above.
 
-   AppKit stops providing `NSTitlebarBackgroundView` as soon as a split view item with
-   `.sidebar` behavior is visible: on macOS 26 and later the titlebar area is drawn by the
-   scroll pocket instead, which lives beside the content view rather than under
-   `NSTitlebarContainerView`. Verified by dumping that subtree with the sidebar collapsed
-   (`NSTitlebarBackgroundView` present, and hidden by `modernTitleBar` anyway) and expanded
-   (absent, with an `NSScrollPocket` backdrop view added next to the content view).
+   Where that one turns `allowsAutomaticWindowTabbing` off to keep a file out of the tab group,
+   this forces tabbing on for one open. The pattern is upstream's own, from
+   `EditorViewController+Menu.swift:167` (`createNewTab`): flip `EditorWindow.forcedTabbing` and
+   the window's `tabbingMode`, then put both back, so the persisted Tabbing Mode preference is
+   never written to. `forcedTabbing` is what `EditorWindow.awakeFromNib` reads, which is why it
+   has to be set before the document's window is made and cleared after.
 
-   `allowsFullHeightLayout = false` does not bring it back; a visible sidebar is enough.
-
-   **This asks whether the window has a sidebar, not whether one is showing, and the
-   difference is a crash.** M2 wrote the narrower question, because the only case it had seen
-   was launching with the sidebar already open. Adding the toggle produced the other one:
-   `NSSplitViewController` lays the window out from inside `_collapse:splitViewItem:`, at a
-   moment when the item is already collapsed and AppKit has not yet put the titlebar
-   background view back, so the narrower question answered "not showing" and
-   `Logger.assertFail` — fatal in DEBUG — took the app down. Measured from the crash report,
-   not inferred: `EditorWindow.updateTitleBarAppearance` under `-[NSSplitViewItem
-   _setCollapsed:animated:]`.
-
-   What widening costs is smaller than the crash but is not nothing, and is worth naming: in
-   the one window state M2 dumped — collapsed, not fullscreen — the view was present, so the
-   assert was not firing there and nothing is lost. The state that was never dumped is
-   fullscreen with the toolbar hidden, the one case `updateTitleBarAppearance` actually uses
-   this view for. If it were missing there with the sidebar collapsed, this would now be
-   silent where it used to shout. That case is still unverified, and it is on the fork's open
-   list for exactly this reason.
-
-   Code that customises the titlebar background uses this to tell that expected absence
-   from a real one.
+   Restored in the completion handler rather than on the next runloop turn as `createNewTab`
+   does, because this open is asynchronous and the next turn can arrive first.
    */
-  var hasWorkspaceSidebar: Bool {
-    (contentViewController as? WorkspaceSplitViewController)?.hasSidebar ?? false
+  func openInNewTab(_ url: URL) {
+    let window = view.window
+    let restoredTabbingMode = window?.tabbingMode
+
+    EditorWindow.forcedTabbing = true
+    window?.tabbingMode = .preferred
+
+    NSDocumentController.shared.openDocument(withContentsOf: url, display: true) { _, _, error in
+      EditorWindow.forcedTabbing = false
+      if let restoredTabbingMode {
+        window?.tabbingMode = restoredTabbingMode
+      }
+
+      if let error {
+        NSSound.beep()
+        Logger.log(.error, "Failed to open \(url.lastPathComponent) in a new tab: \(error.localizedDescription)")
+      }
+    }
   }
 }
 
 // MARK: - Private
 
 private extension WorkspaceSplitViewController {
+  /// The types this app declares itself an *editor* of, read out of its own `Info.plist`.
+  /// The `Viewer` entries — upstream's `public.data` binary fallback — are deliberately left
+  /// out: being able to display a file is not a reason to open one that was dropped as an
+  /// attachment. See `canOpen(_:)`.
+  static let editableTypes: [UTType] = {
+    let declared = Bundle.main.infoDictionary?["CFBundleDocumentTypes"] as? [[String: Any]]
+    return (declared ?? [])
+      .filter { $0["CFBundleTypeRole"] as? String == "Editor" }
+      .flatMap { $0["LSItemContentTypes"] as? [String] ?? [] }
+      .compactMap { UTType($0) }
+  }()
+
   /// Shared by every window, because `NSWindow.allowsAutomaticWindowTabbing` is.
   static var inFlightOpens = 0
   static var savedAllowsAutomaticWindowTabbing: Bool?
@@ -384,215 +440,6 @@ private extension WorkspaceSplitViewController {
     return LaunchFolder.shared.isFolderRooted
   }
 }
-
-// MARK: - Menu
-
-/**
- View ▸ Show Sidebar, added to a menu bar the fork does not own a line of.
-
- `Main.storyboard` takes **23 upstream commits a year** — as expensive as `EditorDocument.swift`
- — so the item is inserted at runtime instead. The alternative considered was a toolbar item:
- AppKit ships `NSToolbarItem.Identifier.toggleSidebar`, already localised and already wired to
- the same action, and it is cheap in merge surface (`EditorToolbarItems.swift` takes 6 commits
- a year). It was not taken as the *primary* affordance because a toolbar is customisable —
- someone who removes the item would be left with no way to bring the sidebar back — and because
- without `NSTrackingSeparatorToolbarItem` it would sit among the formatting buttons on the far
- side of the titlebar rather than above the sidebar it toggles. That belongs with the titlebar
- pass the fork already owes, and this item is what the toolbar item would invoke anyway.
- */
-@MainActor
-enum WorkspaceSidebarMenu {
-  static func installIfNeeded() {
-    guard !isInstalled, let mainMenu = NSApp.mainMenu else {
-      return
-    }
-
-    guard let viewMenu = mainMenu.viewMenu else {
-      // Reached only if upstream restructures its menu bar, and then it is worth knowing
-      // about at the sync rather than by noticing the item is missing.
-      return Logger.assertFail("Missing a View menu to add the sidebar toggle to")
-    }
-
-    isInstalled = true
-
-    // No target: `NSSplitViewController` implements and validates `toggleSidebar(_:)`, and
-    // the responder chain finds whichever window's split view controller is in front.
-    let item = NSMenuItem(
-      title: WorkspaceStrings.showSidebar,
-      action: #selector(NSSplitViewController.toggleSidebar(_:)),
-      keyEquivalent: "s"
-    )
-
-    item.keyEquivalentModifierMask = [.command, .control]
-    item.setAccessibilityIdentifier(Constants.menuItemIdentifier)
-
-    // The top of View, where every other macOS app puts it
-    viewMenu.insertItem(item, at: 0)
-    viewMenu.insertItem(.separator(), at: 1)
-  }
-
-  enum Constants {
-    static let menuItemIdentifier = "workspace.menu.toggleSidebar"
-  }
-
-  // MARK: - Private
-
-  private static var isInstalled = false
-}
-
-private extension NSMenu {
-  /**
-   The View menu.
-
-   Found by an item AppKit's own menu template puts in it, not by the title "View", which is
-   right in exactly one localisation.
-   */
-  var viewMenu: NSMenu? {
-    items.compactMap(\.submenu).first { submenu in
-      submenu.items.contains { $0.action == #selector(NSWindow.toggleFullScreen(_:)) }
-    }
-  }
-}
-
-// MARK: - Launch
-
-extension AppDelegate {
-  /**
-   Open the sidebar's folder, at the moment the app opens its other granted folders.
-
-   Called from `startAccessingGrantedFolder()`, which `Application.main()` runs before
-   `NSApplicationMain` — before any window exists, and so before a document restored into one
-   might need to be read through the folder's security scope. `AppDelegate+FileSystem.swift`
-   takes one upstream commit a year, which makes it the cheapest line in the seam to spend,
-   and it is the flow this belongs to besides: both are the app reopening a folder the user
-   granted it once.
-
-   **Which folder is `LaunchFolder`'s decision, and it cannot hold up a launch.** Last Used or
-   a pinned Custom folder, resolved off the main thread under a bounded wait, with every
-   failure answered by carrying on with no folder — the reasoning is with the cases in
-   `LaunchFolder.restore()`.
-   */
-  func startAccessingWorkspaceRoot() {
-  #if DEBUG
-    if applyDebugRoot() {
-      return
-    }
-  #endif
-
-    LaunchFolder.shared.restore()
-  }
-
-  /**
-   Whether a launch with nothing to restore opens an untitled document rather than a file
-   panel. The rule, and why it overrides upstream's, is `LaunchFolder.opensUntitledFile`; this
-   only supplies the one thing the module cannot see.
-
-   `@Storage` cannot tell a chosen `newWindowBehavior` from its default — it answers
-   `.openDocument` for "wants the panel" and for "has never opened Settings" alike — so this
-   asks `UserDefaults` whether the key is there at all. The key is repeated rather than read
-   from the property wrapper, which exposes no accessor for it. If upstream ever renames it,
-   this reads nil, which means "not set", which means the fork's own rule applies: the
-   direction that fails toward the fork's behaviour rather than away from it.
-
-   It governs a Dock-icon click with no windows open as well, which is the same method and the
-   same question.
-   */
-  var opensUntitledFileForWorkspace: Bool {
-    LaunchFolder.shared.opensUntitledFile(
-      hasExplicitPreference: UserDefaults.standard.object(forKey: "general.new-window-behavior") != nil
-    )
-  }
-}
-
-#if DEBUG
-/**
- The environment overrides that stand in for a folder the user picked.
-
- They exist because choosing a folder ends in an open panel, and a panel is one of the things
- that cannot be clicked from a scripted session on this machine — so without them the whole
- milestone would only be checkable by hand.
-
- `DEBUG_WORKSPACE_ROOT` opens a folder for this launch and forgets it, which is what a
- verification run wants: it must not leave a root behind for the next launch to restore.
- `DEBUG_WORKSPACE_SAVE_ROOT` takes the other half — it runs the real `save`, the same bookmark
- written to the same sandboxed defaults the panel would have written, so that the relaunch it
- is supposed to survive can actually be tested. `DEBUG_WORKSPACE_PIN_ROOT` does the same for
- the Custom launch folder, which is the Settings panel nothing here can click either.
-
- `DEBUG_WORKSPACE_LAUNCH_RESET` is the undo, and it exists because the other two write state
- that outlives the test: this suite shares `UserDefaults` with every real launch of the app, so
- a test that pins a fixture and then deletes it would leave the person using this app pinned to
- a folder that is not there.
- */
-private extension AppDelegate {
-  func applyDebugRoot() -> Bool {
-    let environment = ProcessInfo.processInfo.environment
-
-    // First, because it is the undo for the two below: the UI suite shares `UserDefaults` with
-    // every real launch, so a test that pins a fixture and then deletes it would otherwise
-    // leave the person using this app pinned to a folder that no longer exists.
-    if environment["DEBUG_WORKSPACE_LAUNCH_RESET"] != nil {
-      LaunchFolder.shared.clearPinnedFolder()
-      LaunchFolder.shared.mode = .lastUsed
-      BookmarkStore.shared.clear()
-      return true
-    }
-
-    // Both of the next two can be set together — last used folder *and* a pin — so neither
-    // returns early. The saved root goes first so that the pin is what ends up open.
-    var isHandled = false
-
-    if let path = environment["DEBUG_WORKSPACE_SAVE_ROOT"] {
-      saveDebugRoot(path)
-      isHandled = true
-    }
-
-    if let path = environment["DEBUG_WORKSPACE_PIN_ROOT"] {
-      // Empty means "Custom mode with nothing pinned", which is the fallback case: the launch
-      // rule should quietly use the last folder instead, and that is worth being able to test.
-      if path.isEmpty {
-        LaunchFolder.shared.clearPinnedFolder()
-        LaunchFolder.shared.mode = .custom
-      } else {
-        LaunchFolder.shared.pinFolder(URL(filePath: NSString(string: path).expandingTildeInPath))
-      }
-
-      LaunchFolder.shared.restore()
-      return true
-    }
-
-    if isHandled {
-      LaunchFolder.shared.restore()
-      return true
-    }
-
-    if let path = environment["DEBUG_WORKSPACE_ROOT"] {
-      // Set but empty means "start with no folder at all". A UI test asserting the empty
-      // state needs that: it shares `UserDefaults` with every real launch, so without it the
-      // test inherits whatever folder the person using the app last chose, and passes or
-      // fails on their state rather than on its own.
-      if !path.isEmpty {
-        BookmarkStore.shared.useWithoutSaving(URL(filePath: NSString(string: path).expandingTildeInPath))
-      }
-
-      return true
-    }
-
-    return false
-  }
-
-  /// The real `save`, so the bookmark a relaunch has to survive is the one the panel writes.
-  func saveDebugRoot(_ path: String) {
-    let folder = URL(filePath: NSString(string: path).expandingTildeInPath)
-    do {
-      try BookmarkStore.shared.save(folder)
-      Logger.log(.info, "Remembered workspace root: \(folder.path)")
-    } catch {
-      Logger.log(.error, "Failed to remember workspace root: \(error)")
-    }
-  }
-}
-#endif
 
 // MARK: - Document Switching
 
@@ -818,6 +665,15 @@ final class WorkspaceDocumentSwitcher: NSObject {
 
       next.invalidateRestorableState()
       request.windowController.window?.invalidateRestorableState()
+
+      // The sidebar hears about every other route into a window through `didBecomeKey`, and an
+      // in-place switch is the one that never fires it — the window was already key. That was
+      // fine while a sidebar click was the only thing that switched in place, because the click
+      // had set the highlight itself. It stopped being true the moment a *drop* could switch
+      // the document: a note dropped from outside the folder left the previously open row
+      // highlighted, saying the window was showing a file it was not. Reported, not theorised.
+      (request.windowController.window?.contentViewController as? WorkspaceSplitViewController)?
+        .hostDocumentDidChange()
     }
   }
 
@@ -841,104 +697,3 @@ final class WorkspaceDocumentSwitcher: NSObject {
     document.lastSiblingWindow = tabbedWindows?.first { $0 !== window }
   }
 }
-
-// MARK: - Debug Menu
-
-#if DEBUG
-/**
- Drives `WorkspaceDocumentSwitcher` from the menu bar, before any sidebar exists to drive it.
-
- Switching is the step of this fork that can fail, so it gets to fail on its own, with no
- file tree, no bookmarks and no selection model in the picture. Set
- `DEBUG_WORKSPACE_SWITCH_PATHS` to a colon-separated list of files to get one menu item per
- file, on cmd-ctrl-1 upwards.
-
- Built in code rather than in `Main.storyboard`: the storyboard is upstream's, and a debug
- affordance is not worth a permanent diff in it.
- */
-@MainActor
-enum WorkspaceDebugMenu {
-  static func installIfNeeded() {
-    guard !isInstalled, let mainMenu = NSApp.mainMenu else {
-      return
-    }
-
-    isInstalled = true
-    let menu = NSMenu(title: "Workspace")
-
-    for item in menuItems {
-      menu.addItem(item)
-    }
-
-    let holder = NSMenuItem()
-    holder.submenu = menu
-    mainMenu.addItem(holder)
-  }
-
-  // MARK: - Private
-
-  private static let environmentKey = "DEBUG_WORKSPACE_SWITCH_PATHS"
-  private static var isInstalled = false
-
-  private static var targetURLs: [URL] {
-    let paths = ProcessInfo.processInfo.environment[environmentKey] ?? ""
-    return paths.split(separator: ":").map {
-      URL(filePath: NSString(string: String($0)).expandingTildeInPath)
-    }
-  }
-
-  private static var menuItems: [NSMenuItem] {
-    let urls = targetURLs
-    guard !urls.isEmpty else {
-      // Action is nil, so this is disabled and reads as instructions
-      return [NSMenuItem(title: "Set \(environmentKey) to a colon-separated list of files", action: nil, keyEquivalent: "")]
-    }
-
-    return urls.enumerated().map { index, url in
-      let item = NSMenuItem(
-        title: "Switch to \(url.lastPathComponent)",
-        action: #selector(WorkspaceDocumentSwitcher.switchToDebugTarget(_:)),
-        keyEquivalent: index < 9 ? "\(index + 1)" : ""
-      )
-
-      item.keyEquivalentModifierMask = [.command, .control]
-      item.target = WorkspaceDocumentSwitcher.shared
-      item.representedObject = url
-      return item
-    }
-  }
-}
-
-extension WorkspaceDocumentSwitcher: NSMenuItemValidation {
-  func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
-    menuItem.representedObject is URL && Self.debugTargetWindowController != nil
-  }
-
-  @objc fileprivate func switchToDebugTarget(_ sender: NSMenuItem) {
-    guard let url = sender.representedObject as? URL, let windowController = Self.debugTargetWindowController else {
-      return NSSound.beep()
-    }
-
-    switchDocument(to: url, in: windowController)
-  }
-
-  /**
-   The window a debug switch acts on.
-
-   The real sidebar will name its own window, so this ordering exists only here. It falls
-   back past `keyWindow` and `mainWindow` to any visible editor window because both are nil
-   while the app is inactive, and driving the menu from a script is exactly the case where
-   the app is not the one in front.
-   */
-  fileprivate static var debugTargetWindowController: EditorWindowController? {
-    let candidates = [NSApp.keyWindow, NSApp.mainWindow] + NSApp.windows.filter(\.isVisible)
-    for window in candidates {
-      if let windowController = window?.windowController as? EditorWindowController {
-        return windowController
-      }
-    }
-
-    return nil
-  }
-}
-#endif

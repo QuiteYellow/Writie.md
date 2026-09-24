@@ -10,6 +10,7 @@ import WebKit
 import MarkEditCore
 import MarkEditKit
 import FileDrop
+import Workspace
 
 // MARK: - WKUIDelegate
 
@@ -91,7 +92,10 @@ extension EditorViewController: EditorWebViewActionDelegate {
         }
 
         return FileDropHandler.handle(
-          fileURL: fileURL,
+          // Fork addition: the file is copied into `assets/` beside the document first, so the
+          // link below is relative to a folder that travels with the note. `AssetFolder` hands
+          // back the file unchanged whenever copying is wrong or impossible — `drops.md` §1.
+          fileURL: AssetFolder.staged(fileURL, besideDocumentAt: document?.fileURL),
           documentURL: document?.fileURL,
           documentType: document?.fileType
         )

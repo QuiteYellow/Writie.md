@@ -30,7 +30,20 @@ struct WorkspaceSidebarView: View {
    */
   let drawsFooter: Bool
 
-  @ViewBuilder var body: some View {
+  var body: some View {
+    sidebar
+      // The catcher is invisible to the mouse and still takes drags; the treatment says so.
+      // Both cover the whole sidebar, the empty state included — "No folder is open" is
+      // exactly where someone drops their first folder.
+      .overlay { FolderDropCatcher(model: model) }
+      .overlay { targeting }
+  }
+}
+
+// MARK: - Private
+
+private extension WorkspaceSidebarView {
+  @ViewBuilder var sidebar: some View {
     if drawsFooter {
       content.safeAreaInset(edge: .bottom, spacing: 0) {
         footer
@@ -39,11 +52,19 @@ struct WorkspaceSidebarView: View {
       content
     }
   }
-}
 
-// MARK: - Private
+  /// KoLeaf's own treatment, which is a dashed accent border over a 6% accent fill: enough to
+  /// read as a target at a glance, not so much that it hides what is underneath.
+  @ViewBuilder var targeting: some View {
+    if model.isDropTargeted {
+      RoundedRectangle(cornerRadius: 8)
+        .strokeBorder(Color.accentColor, style: StrokeStyle(lineWidth: 2, dash: [6, 4]))
+        .background(Color.accentColor.opacity(0.06))
+        .padding(4)
+        .allowsHitTesting(false)
+    }
+  }
 
-private extension WorkspaceSidebarView {
   @ViewBuilder var content: some View {
     switch model.state {
     case .noRoot:
@@ -75,19 +96,21 @@ private extension WorkspaceSidebarView {
       WorkspaceOutline(model: model, nodes: nodes)
     }
     .listStyle(.sidebar)
-    .alert(Text("Rename", bundle: .module), isPresented: isRenaming) {
+    .alert(promptTitle, isPresented: isPrompting) {
       TextField(text: $model.proposedName) {
         Text("Name", bundle: .module)
       }
 
+      // The confirm button says what it will do. "Rename" over a folder that does not exist yet
+      // would be the wrong verb, and "OK" would be no verb at all.
       Button {
-        model.commitRenaming()
+        model.commitPrompt()
       } label: {
-        Text("Rename", bundle: .module)
+        promptTitle
       }
 
       Button(role: .cancel) {
-        model.cancelRenaming()
+        model.cancelPrompt()
       } label: {
         Text("Cancel", bundle: .module)
       }
@@ -108,8 +131,19 @@ private extension WorkspaceSidebarView {
     Binding { model.failure != nil } set: { if !$0 { model.failure = nil } }
   }
 
-  var isRenaming: Binding<Bool> {
-    Binding { model.renaming != nil } set: { if !$0 { model.cancelRenaming() } }
+  var isPrompting: Binding<Bool> {
+    Binding { model.prompt != nil } set: { if !$0 { model.cancelPrompt() } }
+  }
+
+  /// Both the alert's title and its confirm button: one word that names the act, so the button is
+  /// "Rename" over a file that exists and "New Folder" over one that does not exist yet.
+  var promptTitle: Text {
+    switch model.prompt {
+    case .newFolder:
+      Text("New Folder", bundle: .module)
+    case .renaming, .none:
+      Text("Rename", bundle: .module)
+    }
   }
 
   /// Fork strings live in the module's own catalog, read through `Bundle.module`.

@@ -19,8 +19,10 @@ import SwiftUI
  */
 @MainActor
 public final class WorkspaceSidebarController: NSViewController {
-  public init(host: WorkspaceHost, options: FolderScanner.Options) {
-    self.model = WorkspaceModel(host: host, options: options)
+  /// `fileExtensions` are the types the app declares as its own; what else the sidebar lists
+  /// is `SidebarFilter.shared`, which the model follows for as long as this window is open.
+  public init(host: WorkspaceHost, fileExtensions: Set<String>) {
+    self.model = WorkspaceModel(host: host, fileExtensions: fileExtensions)
     super.init(nibName: nil, bundle: nil)
   }
 
