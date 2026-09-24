@@ -55,7 +55,7 @@ private extension WorkspaceOutline {
    dividers are the grouping: open it elsewhere, make something new, change this one, find it.
    */
   func row(_ node: FileNode) -> some View {
-    WorkspaceRow(node: node).contextMenu {
+    WorkspaceRow(node: node, isDropTarget: model.dropTarget == node.url).contextMenu {
       openItems(node)
       Divider()
       newItems(node)

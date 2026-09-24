@@ -53,6 +53,31 @@ public final class WorkspaceSidebarController: NSViewController {
     WorkspaceFooterAccessory(model: model)
   }
 
+  /**
+   Drop `files` on the row called `rowName`, without a drag — the sidebar's half of the debug
+   hook `DEBUG_WORKSPACE_DROP_PATHS` is for the editor.
+
+   It goes through `targetDrop(at:)` and `importDroppedFiles` exactly as `performDragOperation`
+   does, taking its point from the frame **the live view reported** for that row. So what it
+   proves that a module test cannot is that the rows report their frames at all, and that a
+   point inside one resolves to the folder it names.
+
+   **What it still does not prove is the geometry across the two frameworks**: whether the point
+   AppKit hands a drag destination lands inside those same frames. That needs a real cross-app
+   drag, which cannot be synthesized on this machine, and it stays a manual check.
+
+   Returns false when the row reported no frame, rather than falling back to a point that would
+   quietly succeed against the root — a hook that cannot fail is a hook that proves nothing.
+   */
+  public func debugDrop(_ files: [URL], onRowNamed rowName: String?, moving: Bool) -> Bool {
+    guard let point = model.debugDropPoint(row: rowName), let destination = model.targetDrop(at: point) else {
+      return false
+    }
+
+    model.importDroppedFiles(files, into: destination, moving: moving)
+    return true
+  }
+
   // MARK: - Private
 
   private let model: WorkspaceModel

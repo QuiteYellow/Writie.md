@@ -88,11 +88,37 @@ public enum AssetFolder {
     let fileManager = FileManager.default
     try fileManager.createDirectory(at: assets, withIntermediateDirectories: true)
 
-    let existing = (try? fileManager.contentsOfDirectory(atPath: assets.path(percentEncoded: false))) ?? []
-    let destination = assets.appending(path: uniqueName(for: source, existing: Set(existing)))
-
+    let destination = assets.appending(path: availableName(for: source, in: assets))
     try fileManager.copyItem(at: source, to: destination)
+
     return destination
+  }
+}
+
+// MARK: - Shared with the sidebar's imports
+
+extension AssetFolder {
+  /// A name for `source` that nothing in `directory` already has — `photo.png`, else
+  /// `photo-1.png`. Internal rather than private because the sidebar's own file imports land in
+  /// an ordinary folder rather than in `assets/`, and two copies of "do not overwrite" would be
+  /// one copy too many: the day they drifted, one of them would start replacing files.
+  static func availableName(for source: URL, in directory: URL) -> String {
+    let existing = (try? FileManager.default.contentsOfDirectory(atPath: directory.path(percentEncoded: false))) ?? []
+    return uniqueName(for: source, existing: Set(existing))
+  }
+
+  /**
+   Whether two URLs name the same directory.
+
+   Two spellings have to be normalised away, not one. `canonicalPath` deals with `/var/…`
+   against `/private/var/…`, which turns up whenever one side was resolved from a bookmark and
+   the other built by hand. The **trailing slash** is the second, and it is the one that bit:
+   `deletingLastPathComponent()` hands back `/notes/sub/` where a scan hands back `/notes/sub`,
+   so a file dropped into the folder it already lives in compared unequal and was duplicated
+   rather than left alone. Found by the test for exactly that case.
+   */
+  static func isSameDirectory(_ lhs: URL, _ rhs: URL) -> Bool {
+    directoryPath(lhs) == directoryPath(rhs)
   }
 }
 
@@ -134,6 +160,17 @@ private extension AssetFolder {
     let base = canonicalPath(directory)
     let target = canonicalPath(url)
     return target.hasPrefix(base.hasSuffix("/") ? base : "\(base)/")
+  }
+
+  /// A canonical path with no trailing slash, so that the two spellings of a directory URL
+  /// compare equal. The root keeps its slash, being nothing else.
+  static func directoryPath(_ url: URL) -> String {
+    let path = canonicalPath(url)
+    guard path.count > 1, path.hasSuffix("/") else {
+      return path
+    }
+
+    return String(path.dropLast())
   }
 
   static func canonicalPath(_ url: URL) -> String {

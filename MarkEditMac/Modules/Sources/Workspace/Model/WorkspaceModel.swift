@@ -193,30 +193,34 @@ public final class WorkspaceModel {
     }
   }
 
-  /// Whether a folder is being dragged over the sidebar right now, for the view to say so.
+  /// Whether the sidebar **as a whole** is the target of a drag right now: a folder about to
+  /// re-root it, or a file bound for the root, which has no row of its own to light up.
   /// On the model because a drag has to survive the view rebuilding underneath it, and because
   /// anything a SwiftUI view's appearance depends on has to be observable state.
   public var isDropTargeted = false
 
   /**
-   Open a folder dropped on the sidebar, making it this workspace's root.
+   The folder a drag is hovering over, drawn as the target.
 
-   The gesture people try first, and until now the sidebar simply refused it: the only way to
-   change folders was the footer's menu. Dropping a folder on a file tree means "show me this
-   one" in every app that has one.
-
-   Only a folder. A *file* dropped on the sidebar is D11a's question — which folder did it land
-   on, and is it a copy or a move — and answering it by quietly changing the root would be the
-   wrong answer to a different gesture.
+   Exactly one of this and `isDropTargeted` is ever set: a drag over a row targets *that*
+   folder, and a drag over anything else — empty space under the last row, a top-level file
+   whose folder is the root, the "No folder is open" placeholder — targets the whole sidebar,
+   because the root has no row of its own to light up.
    */
-  public func openDroppedFolder(_ url: URL) {
-    isDropTargeted = false
-    guard FolderDrop.isFolder(url) else {
-      return
-    }
+  public var dropTarget: URL?
 
-    roots.open(url)
-  }
+  /**
+   Where every visible row is, in the sidebar's own coordinate space.
+
+   Written by the view through a `PreferenceKey` and read back here during a drag, which is the
+   only way the overlay can answer "which row is under the pointer": it is an `NSView` that
+   deliberately fails hit testing, so AppKit will not tell it, and `List` will not either.
+
+   On the model rather than in the view for the reason `drops.md` §5 records — anything a row's
+   appearance depends on during a drag has to be observable state, or the highlight never
+   redraws.
+   */
+  public var rowFrames = [URL: CGRect]()
 
   /// Forget the folder, returning the sidebar to its empty state.
   public func closeFolder() {
@@ -249,7 +253,10 @@ public final class WorkspaceModel {
   private weak var host: WorkspaceHost?
   private let fileExtensions: Set<String>
   private let filter: SidebarFilter
-  private let roots: BookmarkStore
+  /// Internal rather than private only because `WorkspaceModel+Drops` re-roots from a dropped
+  /// folder, and Swift's `private` does not reach across files. Nothing outside the module can
+  /// see it either way.
+  let roots: BookmarkStore
 
   /// Read at every scan rather than held, which is what makes a preference change reach a
   /// window that is already open: the old arrangement built this once, in a `lazy var` in the
@@ -450,7 +457,7 @@ public final class WorkspaceModel {
   /// Looked up across every directory currently listed, rather than derived from the URL's
   /// parent path: a bookmark-resolved root carries a trailing slash that a URL built by hand
   /// does not, and matching on the node's own `url` is the comparison that cannot disagree.
-  private func node(for url: URL) -> FileNode? {
+  func node(for url: URL) -> FileNode? {
     if case .loaded(let nodes) = state, let match = nodes.first(where: { $0.url == url }) {
       return match
     }

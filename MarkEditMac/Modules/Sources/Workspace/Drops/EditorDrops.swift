@@ -199,7 +199,7 @@ private extension EditorDrops {
  without it the receiver's callbacks arrive at a deallocated target.
  */
 @MainActor
-final class DropSession: NSObject {
+final class DropSession: NSObject, PromiseReceiving {
   init(document: NSDocument, host: (any WorkspaceHost)?, deliver: @escaping ([URL]) -> Void) {
     self.document = document
     self.host = host
@@ -253,30 +253,11 @@ final class DropSession: NSObject {
     received = Array(repeating: [], count: max(buckets, 1))
   }
 
-  /**
-   The block AppKit calls as each promised file lands.
-
-   **This shape exists because the obvious one crashed the app.** Written inline inside
-   `receive`, the closure captured `self` — a `@MainActor` class — so Swift inferred main-actor
-   isolation for it and compiled in an executor check. `receivePromisedFiles` then called it on
-   the operation queue it had been handed, the check tripped `dispatch_assert_queue`, and the
-   process died: `EXC_BREAKPOINT` in `swift_task_isCurrentExecutorWithFlags`, one frame below
-   `closure #2 in Session.receive(_:)`, reported from a real Transmit drag.
-
-   **What fixes it is that this closure captures a parameter rather than an isolated `self`**,
-   so no isolation is inferred and the hop to the main actor is explicit. `@Sendable` and
-   `nonisolated` are what stop that being an accident: with them, a later edit that reaches for
-   main-actor state in here is a compile error rather than another crash report.
-   */
+  /// The block AppKit calls as each promised file lands, which is `PromiseReader`'s — see
+  /// there for the crash that decided its shape. Kept as a method of this type because that is
+  /// what the tests drive it through, and because the indirection is one line.
   nonisolated static func reader(for session: DropSession, at index: Int) -> @Sendable (URL, (any Error)?) -> Void {
-    { url, error in
-      // `error` is deliberately not carried across the hop: it is not `Sendable`, and all that
-      // matters on the other side is whether a file arrived.
-      let failed = error != nil
-      Task { @MainActor in
-        session.didReceive(url, failed: failed, from: index)
-      }
-    }
+    PromiseReader.reader(for: session, at: index)
   }
 
   /// Take these files as though a promise had just produced them: they live somewhere

@@ -184,6 +184,70 @@ final class WorkspaceDropUITests: XCTestCase {
       "a file already beside the document was copied into assets/"
     )
   }
+
+  // MARK: - D11a, the sidebar
+
+  /**
+   A file dropped on a folder row lands in that folder.
+
+   The half the module's own tests cannot reach. They plant `rowFrames` and prove the
+   arithmetic over it; this drives the **live** view, so what it establishes is that the rows
+   report their frames at all and that a point inside one resolves to the folder it names. The
+   hook returns false rather than falling back to the root when a row has reported nothing, so
+   a sidebar that never measured itself fails here instead of passing quietly.
+
+   Still not covered, and still a manual check: whether the point AppKit hands a real drag
+   lands inside those same frames.
+   */
+  func testAFileDroppedOnAFolderRowLandsInThatFolder() throws {
+    let root = try makeFixture(["sub/inner.md", "note.md"])
+    let source = try makeFixture(["photo.png"]).appending(path: "photo.png")
+    let app = launchApp(root: root, droppingOnSidebar: [source], row: "sub")
+
+    waitForSidebar(in: app, row: "sub")
+    dropOnSidebar(in: app)
+
+    XCTAssertTrue(waitForFile(at: root.appending(path: "sub").appending(path: "photo.png")), "nothing landed in sub/")
+    XCTAssertFalse(
+      FileManager.default.fileExists(atPath: root.appending(path: "photo.png").path(percentEncoded: false)),
+      "the file landed in the root rather than in the folder it was dropped on"
+    )
+    XCTAssertTrue(
+      FileManager.default.fileExists(atPath: source.path(percentEncoded: false)),
+      "the original was moved rather than copied"
+    )
+  }
+
+  /// Empty space under the last row is still a drop, and it means the folder being shown.
+  func testAFileDroppedOnTheSidebarItselfLandsInTheRoot() throws {
+    let root = try makeFixture(["sub/inner.md", "note.md"])
+    let source = try makeFixture(["photo.png"]).appending(path: "photo.png")
+    let app = launchApp(root: root, droppingOnSidebar: [source], row: nil)
+
+    waitForSidebar(in: app, row: "note.md")
+    dropOnSidebar(in: app)
+
+    XCTAssertTrue(waitForFile(at: root.appending(path: "photo.png")), "nothing landed in the root")
+  }
+
+  /// ⌘ moves rather than copies. The modifier cannot be held across a gesture XCUITest is not
+  /// performing, so the environment stands in for it — which is the one thing about this test
+  /// that is not the real path.
+  func testTheMoveModifierTakesTheFileOutOfWhereItWas() throws {
+    let root = try makeFixture(["sub/inner.md"])
+    let elsewhere = try makeFixture(["photo.png"])
+    let source = elsewhere.appending(path: "photo.png")
+    let app = launchApp(root: root, droppingOnSidebar: [source], row: "sub", moving: true)
+
+    waitForSidebar(in: app, row: "sub")
+    dropOnSidebar(in: app)
+
+    XCTAssertTrue(waitForFile(at: root.appending(path: "sub").appending(path: "photo.png")), "nothing landed in sub/")
+    XCTAssertFalse(
+      FileManager.default.fileExists(atPath: source.path(percentEncoded: false)),
+      "a move left the original where it was"
+    )
+  }
 }
 
 // MARK: - Private
@@ -233,6 +297,39 @@ private extension WorkspaceDropUITests {
   /// ⌘⌃0, the debug menu's drop item.
   func drop(in app: XCUIApplication) {
     app.typeKey("0", modifierFlags: [.command, .control])
+  }
+
+  /// The app, rooted at `root`, with `files` queued behind the debug menu's **sidebar** drop
+  /// item. `row` names the row to drop on, by file name; nil means the sidebar itself.
+  func launchApp(root: URL, droppingOnSidebar files: [URL], row: String?, moving: Bool = false) -> XCUIApplication {
+    let app = XCUIApplication()
+    app.launchArguments += ["-NSQuitAlwaysKeepsWindows", "NO", "-ApplePersistence", "NO"]
+    app.launchEnvironment["DEBUG_WORKSPACE_SIDEBAR"] = "YES"
+    app.launchEnvironment["DEBUG_WORKSPACE_ROOT"] = root.path
+    app.launchEnvironment["DEBUG_WORKSPACE_SIDEBAR_DROP_PATHS"] = files.map(\.path).joined(separator: ":")
+
+    if let row {
+      app.launchEnvironment["DEBUG_WORKSPACE_SIDEBAR_DROP_ROW"] = row
+    }
+
+    if moving {
+      app.launchEnvironment["DEBUG_WORKSPACE_SIDEBAR_DROP_MOVE"] = "YES"
+    }
+
+    app.launch()
+    return app
+  }
+
+  /// Wait for the tree to be listed. The drop reads the frames the rows report, so a drop sent
+  /// before there are any rows would be measuring an empty sidebar.
+  func waitForSidebar(in app: XCUIApplication, row name: String) {
+    let row = app.descendants(matching: .any)["workspace.row.\(name)"]
+    XCTAssertTrue(row.waitForExistence(timeout: Constants.timeout), "no \(name) row in the sidebar")
+  }
+
+  /// ⌘⌀9, the debug menu's sidebar drop item.
+  func dropOnSidebar(in app: XCUIApplication) {
+    app.typeKey("9", modifierFlags: [.command, .control])
   }
 
   /// The document, saved and read back, because what was inserted is the thing being asserted

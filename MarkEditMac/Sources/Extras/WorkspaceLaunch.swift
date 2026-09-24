@@ -214,6 +214,10 @@ enum WorkspaceDebugMenu {
       menu.addItem(dropItem)
     }
 
+    if let sidebarDropItem {
+      menu.addItem(sidebarDropItem)
+    }
+
     let holder = NSMenuItem()
     holder.submenu = menu
     mainMenu.addItem(holder)
@@ -223,6 +227,7 @@ enum WorkspaceDebugMenu {
 
   private static let environmentKey = "DEBUG_WORKSPACE_SWITCH_PATHS"
   private static let dropEnvironmentKey = "DEBUG_WORKSPACE_DROP_PATHS"
+  private static let sidebarDropEnvironmentKey = "DEBUG_WORKSPACE_SIDEBAR_DROP_PATHS"
   private static var isInstalled = false
 
   private static var targetURLs: [URL] {
@@ -233,7 +238,15 @@ enum WorkspaceDebugMenu {
   }
 
   private static var dropURLs: [URL] {
-    let paths = ProcessInfo.processInfo.environment[dropEnvironmentKey] ?? ""
+    urls(from: dropEnvironmentKey)
+  }
+
+  private static var sidebarDropURLs: [URL] {
+    urls(from: sidebarDropEnvironmentKey)
+  }
+
+  private static func urls(from key: String) -> [URL] {
+    let paths = ProcessInfo.processInfo.environment[key] ?? ""
     return paths.split(separator: ":").map {
       URL(filePath: NSString(string: String($0)).expandingTildeInPath)
     }
@@ -258,6 +271,36 @@ enum WorkspaceDebugMenu {
       title: "Drop \(urls.count) file(s) on the editor",
       action: #selector(WorkspaceDropDebugger.dropDebugTargets(_:)),
       keyEquivalent: "0"
+    )
+
+    item.keyEquivalentModifierMask = [.command, .control]
+    item.target = WorkspaceDropDebugger.shared
+    item.representedObject = urls
+    return item
+  }
+
+  /**
+   Drop those files on a sidebar row, without a drag.
+
+   `DEBUG_WORKSPACE_SIDEBAR_DROP_ROW` names the row, by its file name; leaving it out means the
+   sidebar itself, which is the empty space under the tree and resolves to the root.
+   `DEBUG_WORKSPACE_SIDEBAR_DROP_MOVE=YES` stands in for holding ⌘, which XCUITest cannot hold
+   across a gesture it is not performing.
+
+   It is the same entry points a real drop takes, from the point onwards — see
+   `WorkspaceSidebarController.debugDrop` for what that does and does not establish.
+   */
+  private static var sidebarDropItem: NSMenuItem? {
+    let urls = sidebarDropURLs
+    guard !urls.isEmpty else {
+      return nil
+    }
+
+    let row = ProcessInfo.processInfo.environment["DEBUG_WORKSPACE_SIDEBAR_DROP_ROW"]
+    let item = NSMenuItem(
+      title: "Drop \(urls.count) file(s) on \(row ?? "the sidebar")",
+      action: #selector(WorkspaceDropDebugger.dropDebugTargetsOnSidebar(_:)),
+      keyEquivalent: "9"
     )
 
     item.keyEquivalentModifierMask = [.command, .control]
@@ -295,7 +338,39 @@ final class WorkspaceDropDebugger: NSObject, NSMenuItemValidation {
   static let shared = WorkspaceDropDebugger()
 
   func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
-    menuItem.representedObject is [URL] && NSApp.currentEditor != nil
+    guard menuItem.representedObject is [URL] else {
+      return false
+    }
+
+    if menuItem.action == #selector(dropDebugTargetsOnSidebar(_:)) {
+      return sidebar != nil
+    }
+
+    return NSApp.currentEditor != nil
+  }
+
+  /// The sidebar's drop, driven from the row the environment named. A beep is the failure the
+  /// UI test reads as "the rows never reported their frames", which is the thing worth
+  /// catching — so this must not fall back to dropping on the root.
+  @objc fileprivate func dropDebugTargetsOnSidebar(_ sender: NSMenuItem) {
+    guard let urls = sender.representedObject as? [URL], let sidebar else {
+      return NSSound.beep()
+    }
+
+    let environment = ProcessInfo.processInfo.environment
+    let landed = sidebar.debugDrop(
+      urls,
+      onRowNamed: environment["DEBUG_WORKSPACE_SIDEBAR_DROP_ROW"],
+      moving: environment["DEBUG_WORKSPACE_SIDEBAR_DROP_MOVE"] == "YES"
+    )
+
+    if !landed {
+      NSSound.beep()
+    }
+  }
+
+  private var sidebar: WorkspaceSplitViewController? {
+    NSApp.keyWindow?.contentViewController as? WorkspaceSplitViewController
   }
 
   @objc fileprivate func dropDebugTargets(_ sender: NSMenuItem) {

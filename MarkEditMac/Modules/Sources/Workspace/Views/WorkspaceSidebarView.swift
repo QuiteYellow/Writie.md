@@ -32,6 +32,14 @@ struct WorkspaceSidebarView: View {
 
   var body: some View {
     sidebar
+      // Named so that the rows and the drop overlay measure against the same origin. The
+      // overlay is an `NSView` and the rows are SwiftUI, and this is the one thing they have
+      // to agree about — see `FolderDropCatcher`, which flips itself to match.
+      .coordinateSpace(.named(Self.dropSpace))
+      .onPreferenceChange(RowFrames.self) { frames in
+        // The closure is `@Sendable` and the model is main-actor, so the hop is explicit.
+        Task { @MainActor in model.rowFrames = frames }
+      }
       // The catcher is invisible to the mouse and still takes drags; the treatment says so.
       // Both cover the whole sidebar, the empty state included — "No folder is open" is
       // exactly where someone drops their first folder.
@@ -173,6 +181,11 @@ private extension WorkspaceSidebarView {
 }
 
 extension WorkspaceSidebarView {
+  /// The coordinate space rows report their frames in and the drop overlay converts into.
+  /// One name, in one place, because the two halves are in different frameworks and a typo
+  /// would land every drop in the wrong folder rather than failing.
+  static let dropSpace = "workspace.sidebar"
+
   /// Whichever empty state is showing — no folder, empty folder, or unreadable folder. The
   /// text tells them apart; the identifier only says "the sidebar is not listing files".
   static let placeholderIdentifier = "workspace.placeholder"

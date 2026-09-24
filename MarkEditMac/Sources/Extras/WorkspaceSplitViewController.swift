@@ -233,6 +233,12 @@ final class WorkspaceSplitViewController: NSSplitViewController {
     return super.validateUserInterfaceItem(item)
   }
 
+  /// The sidebar's debug drop hook, forwarded. The menu item is `WorkspaceLaunch`'s and the
+  /// work is the module's; this exists because the controller is private to this class.
+  func debugDrop(_ files: [URL], onRowNamed rowName: String?, moving: Bool) -> Bool {
+    sidebar.debugDrop(files, onRowNamed: rowName, moving: moving)
+  }
+
   /**
    Move the divider to the remembered width.
 

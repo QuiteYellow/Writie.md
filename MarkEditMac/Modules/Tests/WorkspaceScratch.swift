@@ -174,3 +174,57 @@ func expectSameFolder(_ url: URL?, _ expected: URL, sourceLocation: SourceLocati
 func canonicalPath(of url: URL) throws -> String {
   try #require(url.resourceValues(forKeys: [.canonicalPathKey]).canonicalPath)
 }
+
+/**
+ The waiting half of the sidebar's tests, shared by every suite that drives a `WorkspaceModel`.
+
+ A protocol rather than free functions so that `sourceLocation` defaulting and the `@MainActor`
+ isolation are declared once. It lives here, beside `Scratch`, because it is test infrastructure
+ three suites now want — it started file-private inside `WorkspaceModelTests` and had to move
+ the first time a fourth file needed it.
+ */
+protocol WaitsForTheSidebar {}
+
+extension WorkspaceModelTests: WaitsForTheSidebar {}
+extension WorkspaceFileActionTests: WaitsForTheSidebar {}
+extension SidebarDropTests: WaitsForTheSidebar {}
+
+@MainActor
+extension WaitsForTheSidebar {
+  func waitForListing(
+    _ names: [String],
+    in model: WorkspaceModel,
+    timeout: TimeInterval = 2,
+    sourceLocation: SourceLocation = #_sourceLocation
+  ) async throws {
+    try await waitFor("the sidebar to list \(names)", timeout: timeout, sourceLocation: sourceLocation) {
+      guard case .loaded(let nodes) = model.state else {
+        return false
+      }
+
+      return nodes.map(\.name) == names
+    }
+  }
+
+  /// Observation hops to the main actor and the scan runs in a task of its own, so the answer
+  /// arrives a turn or two later rather than synchronously. A change that has to travel
+  /// through a vnode event and the model's coalescing delay takes longer again, which is what
+  /// the larger `timeout` on those tests is for.
+  func waitFor(
+    _ description: String,
+    timeout: TimeInterval = 2,
+    sourceLocation: SourceLocation = #_sourceLocation,
+    condition: () -> Bool
+  ) async throws {
+    let deadline = Date(timeIntervalSinceNow: timeout)
+    while Date() < deadline {
+      if condition() {
+        return
+      }
+
+      try await Task.sleep(for: .milliseconds(5))
+    }
+
+    Issue.record("Timed out waiting for \(description)", sourceLocation: sourceLocation)
+  }
+}

@@ -32,31 +32,39 @@ enum FileActions {
       return url
     }
 
-    let coordinator = NSFileCoordinator(filePresenter: nil)
-    var coordinationError: NSError?
-    var moveError: (any Error)?
+    return try move(url, to: target)
+  }
 
-    coordinator.coordinate(
-      writingItemAt: url,
-      options: .forMoving,
-      writingItemAt: target,
-      options: .forReplacing,
-      error: &coordinationError
-    ) { source, destination in
-      coordinator.item(at: source, willMoveTo: destination)
-      do {
-        try FileManager.default.moveItem(at: source, to: destination)
-        coordinator.item(at: source, didMoveTo: destination)
-      } catch {
-        moveError = error
-      }
+  /**
+   Bring `source` into `directory` — what a file dropped on a sidebar row does.
+
+   **Never overwrites, whichever way it goes.** The landing name is `AssetFolder`'s, the same
+   rule the editor's `assets/` staging uses, so a second `photo.png` becomes `photo-1.png`
+   rather than replacing the first. That holds for a move as well as a copy: Finder would stop
+   and ask, and an alert in the middle of a drag saying "there is already one of these" is a
+   worse answer than landing the file and letting the user see two.
+
+   **A move is coordinated and a copy is not.** Only the move can pull a file out from under an
+   open document, which is the same reason `rename` coordinates; a copy creates something no
+   document is presenting yet.
+
+   **Dropping a file into the folder it is already in does nothing**, and says so by handing
+   back the file unchanged. For a move there is nothing to do, and for a copy, duplicating in
+   place is what the context menu's Duplicate is for — doing it from a drag would mean an
+   accidental wobble over the wrong row left litter behind.
+   */
+  static func importItem(_ source: URL, into directory: URL, moving: Bool) throws -> URL {
+    guard !AssetFolder.isSameDirectory(source.deletingLastPathComponent(), directory) else {
+      return source
     }
 
-    if let error = coordinationError ?? moveError {
-      throw error
+    let target = directory.appending(path: AssetFolder.availableName(for: source, in: directory))
+    guard moving else {
+      try FileManager.default.copyItem(at: source, to: target)
+      return target
     }
 
-    return target
+    return try move(source, to: target)
   }
 
   /// Create an empty file in `directory`, named so that it does not collide with what is
@@ -171,6 +179,40 @@ enum FileActions {
 // MARK: - Private
 
 private extension FileActions {
+  /// A coordinated move, shared by `rename` and `importItem`.
+  ///
+  /// `NSDocument` is a file presenter, so coordinating is what updates an open window's title
+  /// and its document's `fileURL` when the file being moved is the one that window is showing.
+  /// An uncoordinated move takes the file out from under a document that goes on believing it
+  /// still lives at the old path.
+  static func move(_ url: URL, to target: URL) throws -> URL {
+    let coordinator = NSFileCoordinator(filePresenter: nil)
+    var coordinationError: NSError?
+    var moveError: (any Error)?
+
+    coordinator.coordinate(
+      writingItemAt: url,
+      options: .forMoving,
+      writingItemAt: target,
+      options: .forReplacing,
+      error: &coordinationError
+    ) { source, destination in
+      coordinator.item(at: source, willMoveTo: destination)
+      do {
+        try FileManager.default.moveItem(at: source, to: destination)
+        coordinator.item(at: source, didMoveTo: destination)
+      } catch {
+        moveError = error
+      }
+    }
+
+    if let error = coordinationError ?? moveError {
+      throw error
+    }
+
+    return target
+  }
+
   /// Finder's word for a copy, localised with it. Not a file name on its own, so it lives here
   /// rather than in `WorkspaceStrings` with the names that are.
   static var copySuffix: String {
